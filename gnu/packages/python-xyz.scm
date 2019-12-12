@@ -7811,7 +7811,8 @@ convert an @code{.ipynb} notebook file into various static formats including:
               (uri (pypi-uri "notebook" version))
               (sha256
                (base32
-                "0jm7324mbxljmn9hgapj66q7swyz5ai92blmr0jpcy0h80x6f26r"))))
+                "0jm7324mbxljmn9hgapj66q7swyz5ai92blmr0jpcy0h80x6f26r"))
+              (patches (search-patches "jupyter-unix-domain-sockets-4835-5.7.4.patch"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -7834,7 +7835,8 @@ convert an @code{.ipynb} notebook file into various static formats including:
        ("python-nbconvert" ,python-nbconvert)
        ("python-prometheus-client" ,python-prometheus-client)
        ("python-send2trash" ,python-send2trash)
-       ("python-terminado" ,python-terminado)))
+       ("python-terminado" ,python-terminado)
+       ("python-requests-unixsocket" ,python-requests-unixsocket)))
     (native-inputs
      `(("python-nose" ,python-nose)
        ("python-sphinx" ,python-sphinx)
@@ -17710,4 +17712,33 @@ applications")
 	  "An extensible environment for interactive and reproducible computing,
 based on the Jupyter Notebook and Architecture.")
     (license license:bsd-3)))
+
+(define-public python-requests-unixsocket
+  (package
+    (name "python-requests-unixsocket")
+    (version "0.2.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "requests-unixsocket" version))
+       (sha256
+        (base32
+         "1sn12y4fw1qki5gxy9wg45gmdrxhrndwfndfjxhpiky3mwh1lp4y"))))
+    (build-system python-build-system)
+    (native-inputs
+     ;; pbr is required for setup only
+     `(("python-pbr" ,python-pbr)))
+    (propagated-inputs
+     `(("python-requests" ,python-requests)
+       ("python-urllib3" ,python-urllib3)))
+    (arguments
+     ;; tests depend on very specific package version, which are not available in guix
+     '(#:tests? #f))
+    (home-page
+     "https://github.com/msabramo/requests-unixsocket")
+    (synopsis
+     "Use requests to talk HTTP via a UNIX domain socket")
+    (description
+     "Use requests to talk HTTP via a UNIX domain socket")
+    (license license:asl2.0)))
 
