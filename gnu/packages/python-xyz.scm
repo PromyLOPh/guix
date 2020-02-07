@@ -17622,3 +17622,37 @@ sequences.")
 usable as a configuration language.  This Python package implements parsing and
 dumping of JSON5 data structures.")
     (license license:asl2.0)))
+
+(define-public python-jupyterlab-server
+  (package
+    (name "python-jupyterlab-server")
+    (version "1.0.6")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "jupyterlab_server" version))
+       (sha256
+        (base32
+         "1bax8iqwcc5p02h5ysdc48zvx7ll5jfzfsybhb3lfvyfpwkpb5yh"))))
+    (build-system python-build-system)
+    (propagated-inputs
+     `(("python-jinja2" ,python-jinja2)
+       ("python-json5" ,python-json5)
+       ("python-jsonschema" ,python-jsonschema)
+       ("python-notebook" ,python-notebook)))
+    (native-inputs
+     `(("python-pytest" ,python-pytest)
+       ("python-requests" ,python-requests)
+       ("python-ipykernel" ,python-ipykernel)))
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         ;; python setup.py test does not invoke pytest?
+         (replace 'check
+           (lambda _
+             (invoke "pytest" "-vv"))))))
+    (home-page "https://jupyter.org")
+    (synopsis "JupyterLab Server")
+    (description "A set of server components for JupyterLab and JupyterLab like
+applications")
+    (license license:bsd-3)))
