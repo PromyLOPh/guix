@@ -126,6 +126,7 @@
   #:use-module (gnu packages multiprecision)
   #:use-module (gnu packages networking)
   #:use-module (gnu packages ncurses)
+  #:use-module (gnu packages node)
   #:use-module (gnu packages openstack)
   #:use-module (gnu packages pcre)
   #:use-module (gnu packages perl)
@@ -17656,3 +17657,57 @@ dumping of JSON5 data structures.")
     (description "A set of server components for JupyterLab and JupyterLab like
 applications")
     (license license:bsd-3)))
+
+(define-public python-jupyterlab
+  (package
+    (name "python-jupyterlab")
+    (version "1.2.6")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (pypi-uri "jupyterlab" version))
+        (sha256
+          (base32
+            "0mc3nrj7fc5q2ajr09m261j386jsp8qjljg8anghlh8czc9ln4s2"))
+        (patches (search-patches "python-jupyterlab-copy-nometa.patch"))))
+    (build-system python-build-system)
+    (propagated-inputs
+      `(("python-jinja2" ,python-jinja2)
+        ("python-jupyterlab-server"
+         ,python-jupyterlab-server)
+        ("python-notebook" ,python-notebook)
+        ("python-tornado" ,python-tornado)
+		("node" ,node)))
+    (native-inputs
+      `(("python-pytest" ,python-pytest)
+        ("python-pytest-check-links"
+         ,python-pytest-check-links)
+        ("python-requests" ,python-requests)
+        ("python-ipykernel" ,python-ipykernel)))
+    (arguments
+     ;; testing requires npm, so disabled for now
+     '(#:tests? #f
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-syspath
+           (lambda* (#:key outputs inputs configure-flags #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out")))
+               (substitute* "jupyterlab/commands.py"
+                 ;; sys.prefix defaults to Python’s prefix in the store, not
+                 ;; jupyterlab’s. Fix that.
+                 (("sys\\.prefix")
+                  (string-append "'" out "'"))))
+             #t))
+         ;; 'build does not respect configure-flags
+         (replace 'build
+           (lambda _
+             (invoke "python" "setup.py" "build" "--skip-npm"))))
+      #:configure-flags (list "--skip-npm")))
+    (home-page "https://jupyter.org")
+    (synopsis
+      "The JupyterLab notebook server extension")
+    (description
+	  "An extensible environment for interactive and reproducible computing,
+based on the Jupyter Notebook and Architecture.")
+    (license license:bsd-3)))
+
