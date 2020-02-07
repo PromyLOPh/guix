@@ -17598,3 +17598,27 @@ sequences.")
     (synopsis "Check links in files")
     (description "Plugin for pytest that checks URLs for HTML-containing files")
     (license license:bsd-3)))
+
+(define-public python-json5
+  (package
+    (name "python-json5")
+    (version "0.8.5")
+    (source
+     (origin
+       ;; sample.json5 is missing from PyPi source tarball
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/dpranke/pyjson5.git")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0nyngj18jlkgvm1177lc3cj47wm4yh3dqigygvcvw7xkyryafsqn"))))
+    (build-system python-build-system)
+    (home-page "https://github.com/dpranke/pyjson5")
+    (synopsis
+     "Python implementation of the JSON5 data format")
+    (description
+     "JSON5 extends the JSON data interchange format to make it slightly more
+usable as a configuration language.  This Python package implements parsing and
+dumping of JSON5 data structures.")
+    (license license:asl2.0)))
