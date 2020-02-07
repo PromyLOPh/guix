@@ -17570,3 +17570,31 @@ sequences.")
 
 (define-public python2-fuzzywuzzy
   (package-with-python2 python-fuzzywuzzy))
+
+(define-public python-pytest-check-links
+  (package
+    (name "python-pytest-check-links")
+    (version "0.3.0")
+    (source
+     (origin
+       (method url-fetch)
+       ;; URI uses underscores
+       (uri (pypi-uri "pytest_check_links" version))
+       (sha256
+        (base32
+         "12x3wmrdzm6wgk0vz02hb769h68nr49q47w5q1pj95pc89hsa34v"))))
+    (build-system python-build-system)
+    (propagated-inputs
+     `(("python-docutils" ,python-docutils)
+       ("python-html5lib" ,python-html5lib)
+       ("python-nbconvert" ,python-nbconvert)
+       ("python-nbformat" ,python-nbformat)
+       ("python-pytest" ,python-pytest)
+       ("python-six" ,python-six)))
+    (native-inputs
+     `(("python-pbr-minimal" ,python-pbr-minimal)))
+    (home-page
+     "https://github.com/minrk/pytest-check-links")
+    (synopsis "Check links in files")
+    (description "Plugin for pytest that checks URLs for HTML-containing files")
+    (license license:bsd-3)))
