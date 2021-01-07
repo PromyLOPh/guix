@@ -964,13 +964,13 @@ and many external plugins.")
     (propagated-inputs
      (append (alist-delete "python-py"
                            (package-propagated-inputs python-pytest))
-             `(("python-py" ,python-py-next))))
+             `(("python-py" ,python-py-next)
+               ("python-iniconfig" ,python-iniconfig))))
     (native-inputs
      (append (alist-delete "python-pytest"
                            (package-native-inputs python-pytest))
              `(("python-pytest" ,python-pytest-6-bootstrap)
-               ("python-toml" ,python-toml)
-               ("python-iniconfig" ,python-iniconfig))))))
+               ("python-toml" ,python-toml))))))
 
 ;; Pytest 4.x are the last versions that support Python 2.
 (define-public python2-pytest
