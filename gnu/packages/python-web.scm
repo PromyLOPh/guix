@@ -5086,7 +5086,16 @@ Plus all the standard features of requests:
          (base32
           "03s3ml6sbki24aajllf8aily0xzrn929zxi84p50zkkbikdd4raw"))))
     (build-system python-build-system)
-    (arguments '(#:tests? #f))  ; Tests not included in release tarball.
+    (arguments
+     '(#:tests? #f  ; Tests not included in release tarball.
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch
+           (lambda* (#:key inputs #:allow-other-keys)
+             ;; Python package names use dot as separator.
+             (substitute* "setup.py"
+               (("websockets/extensions") "websockets.extensions"))
+             #t)))))
     (home-page "https://github.com/aaugustin/websockets")
     (synopsis
      "Python implementation of the WebSocket Protocol (RFC 6455 & 7692)")
