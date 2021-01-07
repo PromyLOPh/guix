@@ -1216,20 +1216,27 @@ same arguments.")
            #t))))
     (build-system python-build-system)
     (arguments
-     '(#:tests? #f)) ;FIXME: Some tests are failing.
-       ;; #:phases
-       ;; (modify-phases %standard-phases
-       ;;   (delete 'check)
-       ;;   (add-after 'install 'check
-       ;;     (lambda* (#:key inputs outputs #:allow-other-keys)
-       ;;       (add-installed-pythonpath inputs outputs)
-       ;;       (zero? (system* "py.test" "-v")))))
+     '(#:tests? #f ; Lots of tests fail.
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-setup-py
+           (lambda _
+             ;; Relax pytest requirement.
+             (substitute* "setup.py"
+               (("pytest>=6\\.0\\.0") "pytest"))
+             #t))
+         (replace 'check
+            (lambda* (#:key tests? inputs outputs #:allow-other-keys)
+              (when tests?
+                (add-installed-pythonpath inputs outputs)
+                (invoke "py.test" "-v")))))))
     (native-inputs
      `(("python-setuptools-scm" ,python-setuptools-scm)))
     (propagated-inputs
      `(("python-execnet" ,python-execnet)
        ("python-pytest" ,python-pytest)
-       ("python-py" ,python-py)))
+       ("python-py" ,python-py)
+       ("python-pytest-forked" ,python-pytest-forked)))
     (home-page
      "https://github.com/pytest-dev/pytest-xdist")
     (synopsis
