@@ -1390,7 +1390,18 @@ other machines, such as over the network.")
     ;; FIXME: Tests require pytest, which itself relies on setuptools.
     ;; One could bootstrap with an internal untested setuptools.
     (arguments
-     `(#:tests? #f))
+     `(#:tests? #f
+       #:python ,python-wrapper
+       #:phases (modify-phases %standard-phases
+                  ;; Use this setuptools’ sources to bootstrap themselves.
+                  (add-before 'build 'set-PYTHONPATH
+                    (lambda _
+                      (format #t "current working dir ~s~%" (getcwd))
+                      (setenv "GUIX_PYTHONPATH"
+                              (string-append ".:" (getenv "GUIX_PYTHONPATH")))
+                      #t)))))
+    ;; Not required when not building a wheel
+    ;(propagated-inputs `(("python-wheel" ,python-wheel)))
     (home-page "https://pypi.org/project/setuptools/")
     (synopsis
      "Library designed to facilitate packaging Python projects")
