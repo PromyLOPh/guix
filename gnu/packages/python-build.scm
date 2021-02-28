@@ -49,10 +49,17 @@
           "0ii6f34rvpjg3nmw4bc2h7fhdsy38y1h93hghncfs5akfrldmj8h"))))
     (build-system python-build-system)
     (arguments
-     ;; FIXME: The test suite runs "python setup.py bdist_wheel", which in turn
-     ;; fails to find the newly-built bdist_wheel library, even though it is
-     ;; available on PYTHONPATH.  What search path is consulted by setup.py?
-     '(#:tests? #f))
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-enable-entrypoints
+           (lambda _
+             ;; python-wheel tells setuptools to not install entry point scripts
+             ;; by default. Stop doing that, so wheels built contain all data
+             ;; required.
+             (substitute* "wheel/bdist_wheel.py"
+               (("(install_scripts\\.no_ep = )True" all assignment)
+				(string-append assignment "False")))
+             #t)))))
     (home-page "https://bitbucket.org/pypa/wheel/")
     (synopsis "Format for built Python packages")
     (description
