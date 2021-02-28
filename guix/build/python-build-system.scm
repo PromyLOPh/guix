@@ -34,6 +34,7 @@
   #:use-module (ice-9 format)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-26)
+  #:use-module (srfi srfi-35)
   #:export (%standard-phases
             add-installed-pythonpath
             site-packages
@@ -108,30 +109,17 @@
 ;; "--single-version-externally-managed" is set, thus the .egg-info directory
 ;; and the scripts defined in entry-points will always be created.
 
+;; Base error type.
+(define-condition-type &python-build-error &error
+  python-build-error?)
 
-(define setuptools-shim
-  ;; Run setup.py with "setuptools" being imported, which will patch
-  ;; "distutils". This is needed for packages using "distutils" instead of
-  ;; "setuptools" since the former does not understand the
-  ;; "--single-version-externally-managed" flag.
-  ;; Python code taken from pip 9.0.1 pip/utils/setuptools_build.py
-  (string-append
-   "import setuptools, tokenize;__file__='setup.py';"
-   "f=getattr(tokenize, 'open', open)(__file__);"
-   "code=f.read().replace('\\r\\n', '\\n');"
-   "f.close();"
-   "exec(compile(code, __file__, 'exec'))"))
+;; Raised when 'check cannot find a valid test system in the inputs.
+(define-condition-type &test-system-not-found &python-build-error
+  test-system-not-found?)
 
-(define (call-setuppy command params use-setuptools?)
-  (if (file-exists? "setup.py")
-      (begin
-         (format #t "running \"python setup.py\" with command ~s and parameters ~s~%"
-                command params)
-         (if use-setuptools?
-             (apply invoke "python" "-c" setuptools-shim
-                    command params)
-             (apply invoke "python" "./setup.py" command params)))
-      (error "no setup.py found")))
+;; Raised when multiple wheels are created by 'build.
+(define-condition-type &cannot-extract-multiple-wheels &python-build-error
+  cannot-extract-multiple-wheels?)
 
 (define* (sanity-check #:key tests? inputs outputs #:allow-other-keys)
   "Ensure packages depending on this package via setuptools work properly,
@@ -142,23 +130,51 @@ without errors."
     (with-directory-excursion "/tmp"
       (invoke "python" sanity-check.py (site-packages inputs outputs)))))
 
-(define* (build #:key use-setuptools? #:allow-other-keys)
+(define* (build #:key outputs #:allow-other-keys)
   "Build a given Python package."
-  (call-setuppy "build" '() use-setuptools?)
+
+  (define pyproject-build (which "pyproject-build"))
+
+  (define (build-pep517)
+    ;; XXX: should probably use a different path, outside of source directory,
+    ;; maybe secondary output “wheel”?
+    (mkdir-p "dist")
+    (invoke pyproject-build "--outdir" "dist" "--no-isolation" "--wheel" "."))
+
+      ;; XXX Would be nice, if we could use bdist_wheel here to remove extra
+      ;; code path in 'install, but that depends on python-wheel.
+  (define (build-setuptools)
+    (invoke "python" "setup.py" "build"))
+
+  (if pyproject-build
+    (build-pep517)
+    (build-setuptools))
   #t)
 
-(define* (check #:key tests? test-target use-setuptools? #:allow-other-keys)
+(define* (check #:key inputs outputs tests? #:allow-other-keys)
   "Run the test suite of a given Python package."
   (if tests?
-      ;; Running `setup.py test` creates an additional .egg-info directory in
-      ;; build/lib in some cases, e.g. if the source is in a sub-directory
-      ;; (given with `package_dir`). This will by copied to the output, too,
-      ;; so we need to remove.
-      (let ((before (find-files "build" "\\.egg-info$" #:directories? #t)))
-        (call-setuppy test-target '() use-setuptools?)
-        (let* ((after (find-files "build" "\\.egg-info$" #:directories? #t))
-               (inter (lset-difference string=? after before)))
-          (for-each delete-file-recursively inter)))
+    ;; Unfortunately with PEP 517 there is no common method to specify test
+    ;; systems. Guess test system based on inputs instead.
+    (let ((pytest (which "pytest"))
+            (have-setup-py (file-exists? "setup.py")))
+        ;; Prefer pytest
+        ;; XXX: support nose
+        (cond
+          (pytest
+            (begin
+              (format #t "using pytest~%")
+              (invoke pytest "-vv"))) ; XXX: support skipping tests based on name/extra arguments?
+          ;; But fall back to setup.py, which should work for most
+          ;; packages. XXX: would be nice not to depend on setup.py here? fails
+          ;; more often than not to find any tests at all. Maybe we can run
+          ;; `python -m unittest`?
+          (have-setup-py
+            (begin
+              (format #t "using setup.py~%")
+                (invoke "python" "setup.py" "test" "-v")))
+          ;; The developer should explicitly disable tests in this case.
+          (#t (raise (condition (&test-system-not-found))))))
       (format #t "test suite not run~%"))
   #t)
 
@@ -195,31 +211,109 @@ running checks after installing the package."
                                 "/bin:"
                                 (getenv "PATH"))))
 
-(define* (install #:key inputs outputs (configure-flags '()) use-setuptools?
-                  #:allow-other-keys)
-  "Install a given Python package."
-  (let* ((out (python-output outputs))
-         (python (assoc-ref inputs "python"))
-         (major-minor (map string->number
-                           (take (string-split (python-version python) #\.) 2)))
-         (<3.7? (match major-minor
-                   ((major minor)
-                    (or (< major 3) (and (= major 3) (< minor 7))))))
-         (params (append (list (string-append "--prefix=" out)
-                               "--no-compile")
-                         (if use-setuptools?
-                             ;; distutils does not accept these flags
-                             (list "--single-version-externally-managed"
-                                   "--root=/")
-                             '())
-                         configure-flags)))
-    (call-setuppy "install" params use-setuptools?)
-    ;; Rather than produce potentially non-reproducible .pyc files on Pythons
-    ;; older than 3.7, whose 'compileall' module lacks the
-    ;; '--invalidation-mode' option, do not generate any.
-    (unless <3.7?
-      (invoke "python" "-m" "compileall" "--invalidation-mode=unchecked-hash"
-              out))))
+(define* (install #:key inputs outputs (configure-flags '()) #:allow-other-keys)
+  "Install a wheel file according to PEP 427"
+  ;; See https://www.python.org/dev/peps/pep-0427/#installing-a-wheel-distribution-1-0-py32-none-any-whl
+  (let* ((site-dir (site-packages inputs outputs))
+         (out (assoc-ref outputs "out")))
+    (define (extract file)
+      "Extract wheel (ZIP file) into site-packages directory"
+      ;; Use Python’s zipfile to avoid extra dependency
+      (invoke "python" "-m" "zipfile" "-e" file site-dir))
+
+    (define python-hashbang
+      (string-append "#!" (assoc-ref inputs "python") "/bin/python"))
+
+    (define (move-data source destination)
+      (mkdir-p (dirname destination))
+      (rename-file source destination))
+
+    (define (move-script source destination)
+      "Move executable script file from .data/scripts to out/bin and replace
+temporary hashbang"
+	  (move-data source destination)
+      ;; ZIP does not save/restore permissions, make executable
+      ;; XXX: might not be a file, but directory with subdirectories
+      (chmod destination #o755)
+      (substitute* destination (("#!python") python-hashbang)))
+
+    ;; Python’s distutils.command.install defines this mapping from source to
+    ;; destination mapping.
+    (define install-schemes
+      `(("scripts" "bin" ,move-script)
+        ;; XXX: Why does Python not use share/ here?
+        ("data" "share" ,move-data)))
+
+    (define (expand-data-directory directory)
+      "Move files from all .data subdirectories to their respective
+destinations."
+      (for-each
+        (match-lambda ((source destination function)
+          (let ((source-path (string-append directory "/" source))
+                (destination-path (string-append out "/" destination)))
+            (when (file-exists? source-path)
+              (begin
+                ;; This assumes only files exist in the scripts/ directory.
+                (for-each
+                  (lambda (file)
+                    (apply
+                      function
+                      (list
+                        (string-append source-path "/" file)
+                        (string-append destination-path "/" file))))
+                  (scandir source-path (negate (cut member <> '("." "..")))))
+                (rmdir source-path))))))
+        install-schemes))
+    
+  (define pyproject-build (which "pyproject-build"))
+
+  (define (list-directories base predicate)
+    ;; Cannot use find-files here, because it’s recursive.
+    (scandir
+      base
+      (lambda (name)
+        (let ((stat (lstat (string-append base "/" name))))
+        (and
+          (not (member name '("." "..")))
+          (eq? (stat:type stat) 'directory)
+          (predicate name stat))))))
+
+  (define (install-pep517)
+    "Install a wheel generated by a PEP 517-compatible builder."
+    (let ((wheels (find-files "dist" "\\.whl$"))) ; XXX: do not recurse
+      (when (> (length wheels) 1) ; This code does not support multiple wheels
+                                  ; yet, because their outputs would have to be
+                                  ; merged properly.
+        (raise (condition (&cannot-extract-multiple-wheels))))
+      (for-each extract wheels))
+    (let ((datadirs (map
+					  (cut string-append site-dir "/" <>)
+					  (list-directories site-dir (file-name-predicate "\\.data$")))))
+      (for-each (lambda (directory)
+                  (expand-data-directory directory)
+                  (rmdir directory))
+                datadirs)))
+
+    (define (install-setuptools)
+      "Install using setuptools."
+      (let ((out (assoc-ref outputs "out")))
+        (invoke "python" "setup.py"
+				"install"
+				"--prefix" out
+				"--single-version-externally-managed"
+				"--root=/")))
+
+    (if pyproject-build
+      (install-pep517)
+      (install-setuptools))
+    #t))
+
+(define* (compile-bytecode #:key inputs outputs (configure-flags '()) #:allow-other-keys)
+  "Compile installed byte-code in site-packages."
+  (let ((site-dir (site-packages inputs outputs)))
+    (invoke "python" "-m" "compileall" site-dir)
+    ;; XXX: We could compile with -O and -OO too here, at the cost of more space.
+    #t))
 
 (define* (wrap #:key inputs outputs #:allow-other-keys)
   (define (list-of-files dir)
@@ -243,29 +337,12 @@ running checks after installing the package."
                             files)))
               bindirs)))
 
-(define* (rename-pth-file #:key name inputs outputs #:allow-other-keys)
-  "Rename easy-install.pth to NAME.pth to avoid conflicts between packages
-installed with setuptools."
-  ;; Even if the "easy-install.pth" is not longer created, we kept this phase.
-  ;; There still may be packages creating an "easy-install.pth" manually for
-  ;; some good reason.
-  (let* ((site-packages (site-packages inputs outputs))
-         (easy-install-pth (string-append site-packages "/easy-install.pth"))
-         (new-pth (string-append site-packages "/" name ".pth")))
-    (when (file-exists? easy-install-pth)
-      (rename-file easy-install-pth new-pth))))
-
-(define* (ensure-no-mtimes-pre-1980 #:rest _)
-  "Ensure that there are no mtimes before 1980-01-02 in the source tree."
-  ;; Rationale: patch-and-repack creates tarballs with timestamps at the POSIX
-  ;; epoch, 1970-01-01 UTC.  This causes problems with Python packages,
-  ;; because Python eggs are ZIP files, and the ZIP format does not support
-  ;; timestamps before 1980.
-  (let ((early-1980 315619200))  ; 1980-01-02 UTC
-    (ftw "." (lambda (file stat flag)
-               (unless (<= early-1980 (stat:mtime stat))
-                 (utime file early-1980 early-1980))
-               #t))))
+(define* (set-SOURCE-DATE-EPOCH #:rest _)
+  "Set the 'SOURCE_DATE_EPOCH' environment variable.  This is used by tools
+that incorporate timestamps as a way to tell them to use a fixed timestamp.
+See https://reproducible-builds.org/specs/source-date-epoch/."
+  (setenv "SOURCE_DATE_EPOCH" "315619200") ;; python-wheel respects this variable and sets pre-1980 times on files in zip files, which is unsupported
+  #t)
 
 (define* (enable-bytecode-determinism #:rest _)
   "Improve determinism of pyc files."
@@ -292,11 +369,11 @@ by Cython."
   ;; prefix directory.  The check phase is moved after the installation phase
   ;; to ease testing the built package.
   (modify-phases gnu:%standard-phases
-    (add-after 'unpack 'ensure-no-mtimes-pre-1980 ensure-no-mtimes-pre-1980)
-    (add-after 'ensure-no-mtimes-pre-1980 'enable-bytecode-determinism
+    (add-after 'unpack 'enable-bytecode-determinism
       enable-bytecode-determinism)
     (add-after 'enable-bytecode-determinism 'ensure-no-cythonized-files
       ensure-no-cythonized-files)
+    (replace 'set-SOURCE-DATE-EPOCH set-SOURCE-DATE-EPOCH)
     (delete 'bootstrap)
     (delete 'configure)                 ;not needed
     (replace 'build build)
@@ -308,7 +385,7 @@ by Cython."
     (add-after 'add-install-to-path 'wrap wrap)
     (add-after 'wrap 'check check)
     (add-after 'check 'sanity-check sanity-check)
-    (add-before 'strip 'rename-pth-file rename-pth-file)))
+    (add-before 'check 'compile-bytecode compile-bytecode)))
 
 (define* (python-build #:key inputs (phases %standard-phases)
                        #:allow-other-keys #:rest args)

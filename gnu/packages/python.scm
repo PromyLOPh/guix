@@ -183,7 +183,7 @@
        (list "--enable-shared"          ;allow embedding
              "--with-system-expat"      ;for XML support
              "--with-system-ffi"        ;build ctypes
-             "--with-ensurepip=install" ;install pip and setuptools
+             "--with-ensurepip=no"      ;do not install pip and setuptools
              "--enable-unicode=ucs4"
 
              ;; Prevent the installed _sysconfigdata.py from retaining a reference

@@ -67,8 +67,8 @@ extension, such as '.tar.gz'."
 (define (default-python)
   "Return the default Python package."
   ;; Lazily resolve the binding to avoid a circular dependency.
-  (let ((python (resolve-interface '(gnu packages python))))
-    (module-ref python 'python-wrapper)))
+  (let ((python (resolve-interface '(gnu packages python-commencement))))
+    (module-ref python 'python-toolchain-for-build)))
 
 (define (default-python2)
   "Return the default Python 2 package."
@@ -172,9 +172,9 @@ pre-defined variants."
 (define* (python-build name inputs
                        #:key source
                        (tests? #t)
+                       (configure-flags ''())
                        (test-target "test")
                        (use-setuptools? #t)
-                       (configure-flags ''())
                        (phases '%standard-phases)
                        (outputs '("out"))
                        (search-paths '())
