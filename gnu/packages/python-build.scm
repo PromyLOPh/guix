@@ -208,3 +208,30 @@ compatible build front-ends to build Poetry managed projects.")
     (synopsis "A parser for TOML-0.4.0")
     (description "A parser for TOML-0.4.0")
     (license license:expat)))
+
+(define-public python-flit-core
+  (package
+    (name "python-flit-core")
+    (version "3.0.0")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (pypi-uri "flit_core" version))
+        (sha256
+          (base32
+            "0bbw84r33gwi0xyp7m8dzp2dzpjs4harj3l5wrbxkmp2awh0ard4"))))
+    (build-system python-build-system)
+    (arguments
+     `(;; No tests.
+       #:tests? #f))
+    (propagated-inputs
+      `(("python-pytoml" ,python-pytoml)))
+    (home-page "https://github.com/takluyver/flit")
+    (synopsis
+      "Simplified packaging of Python modules, distribution-building parts")
+    (description
+      "Flit is a simple way to put Python packages and modules on PyPI.  It
+tries to require less thought about packaging and help you avoid common
+mistakes.  Distribution-building parts of Flit.")
+    (license license:bsd-3)))
+
