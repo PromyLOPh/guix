@@ -17110,6 +17110,7 @@ in other versions.")
         (base32
          "0ckzngs3scaa1mcfmsi1w40a1l8cxxnncscrxzjjwjyisx8z0fmw"))))
     (build-system python-build-system)
+    (native-inputs `(("python-setuptools-scm" ,python-setuptools-scm)))
     (home-page "https://github.com/RonnyPfannschmidt/iniconfig")
     (synopsis "Simple INI-file parser")
     (description "The @code{iniconfig} package provides a small and simple
