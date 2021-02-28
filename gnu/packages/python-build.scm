@@ -128,10 +128,21 @@ Language (TOML) configuration files.")
           "0zqidxah03qpnp6zkg3zd1kmd5f79hhdsfmlc0cldaniy80qddxf"))))
      (build-system python-build-system)
      (arguments
-      `(#:tests? #f))                     ;to avoid circular dependencies
+     `(#:tests? #f ; To avoid circular dependencies.
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'relax-dependency
+           (lambda _
+             (substitute* "pyproject.toml"
+               (("flit_core >=2,<3")
+                "flit_core >=2,<4"))
+             #t)))))
      (propagated-inputs
       `(("python-toml" ,python-toml)
         ("python-wheel" ,python-wheel)))
+     (native-inputs
+     `(;; Build system.
+       ("python-flit-core" ,python-flit-core)))
      (home-page "https://github.com/pypa/pep517")
      (synopsis "Wrappers to build Python packages using PEP 517 hooks")
      (description
