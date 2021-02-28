@@ -136,13 +136,13 @@ Language (TOML) configuration files.")
 (define-public python-pypa-build
   (package
     (name "python-pypa-build")
-    (version "0.1.0")
+    (version "0.3.0")
     (source (origin
               (method url-fetch)
               (uri (pypi-uri "build" version))
               (sha256
                (base32
-                "1d6m21lijwm04g50nwgsgj7x3vhblzw7jv05ah8psqgzk20bbch8"))))
+                "1pazq66c35whrqd5b0zcydjvy2rmghi8riljkd67q3bpiln5pf8f"))))
     (build-system python-build-system)
     (arguments
      `(#:tests? #f                      ;to tests in the PyPI release
