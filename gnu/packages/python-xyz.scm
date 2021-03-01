@@ -2641,8 +2641,7 @@ and is not compatible with JSON.")
                "1xy8jrwz87y589ihcld4hv7wn122sjbz914xn8h50ww77wbhk8hn"))))
     (build-system python-build-system)
     (arguments
-     `(#:use-setuptools? #f                ; still relies on distutils
-       #:tests? #f                         ; no 'python setup.py test' command
+     `(#:tests? #f                         ; no 'python setup.py test' command
        #:phases
        (modify-phases %standard-phases
          (add-before 'build 'bootstrap
