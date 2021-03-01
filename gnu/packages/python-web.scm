@@ -1079,7 +1079,20 @@ storage.")
         (uri (pypi-uri "html5lib" version))
         (sha256
           (base32
-            "0vqlhk0hgbsfkh7ybmby93xhlx8dq6pr5blf356ka3z2c41b9rdj"))))
+            "0vqlhk0hgbsfkh7ybmby93xhlx8dq6pr5blf356ka3z2c41b9rdj"))
+        (patches
+          (list
+            ;; Adds Pytest 6 support.
+            (origin
+              (method url-fetch)
+              (uri (string-append
+                     "https://github.com/html5lib/"
+                     "html5lib-python/commit/"
+                     "2c19b9899ab3a3e8bd0ca35e5d78544334204169.patch"))
+              (file-name "python-html5lib-support-pytest6.patch")
+              (sha256
+                (base32
+                  "0jg2ry0439q8n7j1mf4p2hdq54i704pq9scv4wwa2pp3cwvb6dvg")))))))
     (build-system python-build-system)
     (propagated-inputs
      `(("python-six" ,python-six)
@@ -1088,6 +1101,9 @@ storage.")
        ("python-chardet" ,python-chardet)))
     (arguments
      `(#:test-target "check"))
+    (native-inputs
+      `(("python-pytest" ,python-pytest)
+        ("python-pytest-expect" ,python-pytest-expect)))
     (home-page
       "https://github.com/html5lib/html5lib-python")
     (synopsis
