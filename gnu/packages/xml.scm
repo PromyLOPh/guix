@@ -370,7 +370,10 @@ It uses libxml2 to access the XML files.")
                  (format #f "ROOT = r'~a'" libxml2))
                 ;; For 'iconv.h'.
                 (("/opt/include")
-                 (string-append glibc "/include"))))
+                 (string-append glibc "/include"))
+                (("distutils\\.core") "setuptools")
+                ;; python-pypa-build does not like it if setup.py exits.
+                (("sys\\.exit\\(0\\)") "")))
             #t)))))
     (inputs `(("libxml2" ,libxml2)))
     (synopsis "Python bindings for the libxml2 library")))
