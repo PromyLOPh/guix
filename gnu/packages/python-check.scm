@@ -1515,3 +1515,31 @@ allows one to create a set of tests using @emph{pairwise combinations} method,
 reducing a number of combinations of variables into a lesser set that covers
 most situations.")
     (license license:expat)))
+
+(define-public python-pytest-expect
+  (package
+    (name "python-pytest-expect")
+    (version "1.1.0")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (pypi-uri "pytest-expect" version))
+        (sha256
+          (base32
+            "0iyq3zd1g5ffaz2wv6mskjfn84sfbyh0j209glcrh1s50hkldd1n"))))
+    (build-system python-build-system)
+    (arguments `(#:tests? #f)) ; no tests via pypi
+    (propagated-inputs
+      `(("python-pytest" ,python-pytest) ; package declares this dependency
+        ("python-u-msgpack" ,python-u-msgpack)))
+    (home-page
+      "https://github.com/gsnedders/pytest-expect")
+    (synopsis
+      "Py.test plugin to store test expectations and mark tests based on them")
+    (description
+      "A py.test plugin that stores test expectations by saving the set of
+failing tests, allowing them to be marked as xfail when running them in future.
+The tests expectations are stored such that they can be distributed alongside
+the tests.")
+    (license license:expat)))
+
