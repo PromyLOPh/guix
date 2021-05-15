@@ -67,6 +67,7 @@
   #:use-module (gnu packages perl)
   #:use-module (gnu packages perl-check)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages tls)
   #:use-module (gnu packages web)
   #:use-module ((guix licenses) #:prefix license:)
@@ -2583,10 +2584,16 @@ because lxml.etree already has it's own implementation of XPath 1.0.")
         (base32 "0s14r1w2x9sdlcsw8mxiqgw4rz5zs5lpqpxrfyn4a1mkndqqbdrr"))))
     (build-system python-build-system)
     (arguments
-     `(#:phases (modify-phases %standard-phases
-                  (replace 'check
+      `(#:phases (modify-phases %standard-phases
+                                ;; Expects setup.py to be called from source root.
+         (add-after 'unpack 'patch-get-base-dir
                     (lambda _
-                      (invoke "make" "test"))))))
+                      (substitute* "versioninfo.py"
+                                   (("os.path.abspath\\(os.path.dirname\\(sys.argv\\[0\\]\\)\\)") "'.'"))
+                      #t))
+         (replace 'check
+                  (lambda _
+                    (invoke "make" "test"))))))
     (inputs
      `(("libxml2" ,libxml2)
        ("libxslt" ,libxslt)))
