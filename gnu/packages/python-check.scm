@@ -33,6 +33,7 @@
   #:use-module (gnu packages)
   #:use-module (gnu packages check)
   #:use-module (gnu packages django)
+  #:use-module (gnu packages jupyter)
   #:use-module (gnu packages openstack)
   #:use-module (gnu packages python-build)
   #:use-module (gnu packages python-web)

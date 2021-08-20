@@ -62,6 +62,7 @@
   #:use-module (gnu packages icu4c)
   #:use-module (gnu packages image)
   #:use-module (gnu packages java)
+  #:use-module (gnu packages jupyter)
   #:use-module (gnu packages libffi)
   #:use-module (gnu packages machine-learning)
   #:use-module (gnu packages maths)

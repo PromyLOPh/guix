@@ -45,6 +45,7 @@
   #:use-module (gnu packages gnupg)
   #:use-module (gnu packages golang)
   #:use-module (gnu packages java)
+  #:use-module (gnu packages jupyter)
   #:use-module (gnu packages linux)
   #:use-module (gnu packages pcre)
   #:use-module (gnu packages python)

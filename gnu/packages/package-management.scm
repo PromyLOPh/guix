@@ -66,6 +66,7 @@
   #:use-module (gnu packages guile)
   #:use-module (gnu packages guile-xyz)
   #:use-module (gnu packages hurd)
+  #:use-module (gnu packages jupyter)
   #:use-module (gnu packages less)
   #:use-module (gnu packages libedit)
   #:use-module (gnu packages linux)

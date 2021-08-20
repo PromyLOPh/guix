@@ -45,6 +45,7 @@
   #:use-module (gnu packages check)
   #:use-module (gnu packages flex)
   #:use-module (gnu packages freeipmi)
+  #:use-module (gnu packages jupyter)
   #:use-module (gnu packages linux)
   #:use-module (gnu packages maths)
   #:use-module (gnu packages mpi)

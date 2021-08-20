@@ -61,6 +61,7 @@
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages haskell-xyz)
   #:use-module (gnu packages java)
+  #:use-module (gnu packages jupyter)
   #:use-module (gnu packages libffi)
   #:use-module (gnu packages libidn)
   #:use-module (gnu packages linux)
