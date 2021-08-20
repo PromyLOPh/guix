@@ -1043,6 +1043,126 @@ packages will remove their dependency on this, and this package will go
 away.")
     (license license:bsd-3)))
 
+(define-public python-jupyter-server
+  (package
+    (name "python-jupyter-server")
+    (version "1.10.2")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (pypi-uri "jupyter_server" version))
+        (sha256
+          (base32
+            "1gvjbsw5nl94hz02rnkr4g4kkvh9fz7i45vz17hzwyvdpj7bd8yk"))))
+    (build-system python-build-system)
+    (propagated-inputs
+      `(("python-anyio" ,python-anyio)
+        ("python-argon2-cffi" ,python-argon2-cffi)
+        ("python-ipython-genutils"
+         ,python-ipython-genutils)
+        ("python-jinja2" ,python-jinja2)
+        ("python-jupyter-client" ,python-jupyter-client)
+        ("python-jupyter-core" ,python-jupyter-core)
+        ("python-nbconvert" ,python-nbconvert)
+        ("python-nbformat" ,python-nbformat)
+        ("python-prometheus-client"
+         ,python-prometheus-client)
+        ("python-pyzmq" ,python-pyzmq)
+        ("python-requests-unixsocket"
+         ,python-requests-unixsocket)
+        ("python-send2trash" ,python-send2trash)
+        ("python-six" ,python-six)
+        ("python-terminado" ,python-terminado)
+        ("python-tornado" ,python-tornado-6)
+        ("python-traitlets" ,python-traitlets)
+        ("python-websocket-client"
+         ,python-websocket-client)))
+    (native-inputs
+      `(("python-coverage" ,python-coverage)
+        ("python-ipykernel" ,python-ipykernel)
+        ("python-pytest" ,python-pytest)
+        ("python-pytest-console-scripts"
+         ,python-pytest-console-scripts)
+        ("python-pytest-cov" ,python-pytest-cov)
+        ("python-pytest-mock" ,python-pytest-mock)
+        ("python-pytest-tornasync"
+         ,python-pytest-tornasync)
+        ("python-requests" ,python-requests)))
+    (home-page "https://jupyter.org")
+    (synopsis
+      "The backend—i.e. core services, APIs, and REST endpoints—to Jupyter web applications.")
+    (description
+      "The backend—i.e. core services, APIs, and REST endpoints—to Jupyter web applications.")
+    (license #f)))
+
+(define-public python-jupyterlab-server
+  (package
+    (name "python-jupyterlab-server")
+    (version "2.7.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "jupyterlab_server" version))
+       (sha256
+        (base32
+         "1pw0dagj8b3niq0080s8klna9j028a2jmhls7c0zm67fkay30ahq"))))
+    (build-system python-build-system)
+    (propagated-inputs
+     `(("python-babel" ,python-babel)
+       ("python-entrypoints" ,python-entrypoints)
+       ("python-jinja2" ,python-jinja2)
+       ("python-json5" ,python-json5)
+       ("python-jsonschema" ,python-jsonschema)
+       ("python-jupyter-server" ,python-jupyter-server)
+       ("python-packaging" ,python-packaging)
+       ("python-requests" ,python-requests)
+       ("python-tornado" ,python-tornado-6)))
+    (native-inputs
+     `(("python-pytest" ,python-pytest)
+       ("python-ipykernel" ,python-ipykernel)))
+    (arguments
+     `(#:tests? #f
+       #:phases
+       (modify-phases %standard-phases
+         ;; python setup.py test does not invoke pytest?
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               (invoke "pytest" "-vv")))))))
+    (home-page "https://jupyter.org")
+    (synopsis "JupyterLab Server")
+    (description "A set of server components for JupyterLab and JupyterLab like
+applications")
+    (license license:bsd-3)))
+
+(define-public python-nbclassic
+  (package
+    (name "python-nbclassic")
+    (version "0.3.1")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (pypi-uri "nbclassic" version))
+        (sha256
+          (base32
+            "0ivrm9jjwmskw0faargmd26klxh1s4xzy5qh1sasggj9k38gh87r"))))
+    (build-system python-build-system)
+    (propagated-inputs
+      `(("python-jupyter-server" ,python-jupyter-server)
+        ("python-notebook" ,python-notebook)))
+    (native-inputs
+      `(("python-pytest" ,python-pytest)
+        ("python-pytest-console-scripts"
+         ,python-pytest-console-scripts)
+        ("python-pytest-tornasync"
+         ,python-pytest-tornasync)))
+    (home-page "http://jupyter.org")
+    (synopsis
+      "Jupyter Notebook as a Jupyter Server Extension.")
+    (description
+      "Jupyter Notebook as a Jupyter Server Extension.")
+    (license license:bsd-3)))
+
 (define-public python-ipykernel
   (package
     (name "python-ipykernel")

@@ -25335,3 +25335,43 @@ that.  Adding extra parameters later would break other peoples code unless
 you're careful.  The @code{backcall} package provides a way of specifying the
 callback signature using a prototype function.")
     (license license:bsd-3)))
+
+(define-public python-anyio
+  (package
+    (name "python-anyio")
+    (version "3.3.0")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (pypi-uri "anyio" version))
+        (sha256
+          (base32
+            "0x03hsprdrs86wjjkj96zm2jswy3a5bgyrknyi58pzz5hdsscmxf"))))
+    (build-system python-build-system)
+    (arguments `(#:tests? #f)) ; XXX: need additional packages
+    (propagated-inputs
+      `(("python-idna" ,python-idna)
+        ("python-sniffio" ,python-sniffio)))
+    (native-inputs
+      `(("python-coverage" ,python-coverage)
+        ("python-hypothesis" ,python-hypothesis)
+        ("python-mock" ,python-mock)
+        ("python-pytest" ,python-pytest)
+        ("python-pytest-mock" ,python-pytest-mock)
+        ("python-setuptools-scm" ,python-setuptools-scm)
+        ("python-trustme" ,python-trustme)
+        ("python-uvloop" ,python-uvloop)))
+    (home-page "https://anyio.readthedocs.io/")
+    (synopsis
+      "High level asynchronous event loops")
+    (description
+      "AnyIO is an asynchronous networking and concurrency library that works
+on top of either asyncio or trio. It implements trio-like structured
+concurrency (SC) on top of asyncio, and works in harmony with the native SC of
+trio itself.
+
+Applications and libraries written against AnyIO’s API will run unmodified on
+either asyncio or trio. AnyIO can also be adopted into a library or application
+incrementally – bit by bit, no full refactoring necessary. It will blend in
+with native libraries of your chosen backend.")
+    (license license:expat)))

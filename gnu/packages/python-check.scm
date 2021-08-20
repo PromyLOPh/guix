@@ -1519,3 +1519,53 @@ or use cases.  Design is based on supporting slow, io-bound testing with often
 tedious system under test configuration that can benefit from running several
 tests at one time.")
     (license license:expat)))
+
+(define-public python-pytest-console-scripts
+  (package
+    (name "python-pytest-console-scripts")
+    (version "1.2.0")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (pypi-uri "pytest-console-scripts" version))
+        (sha256
+          (base32
+            "073l2cz11013dl30zjr575ms78j9b2bsbdl1w0gmig37spbkh8aa"))))
+    (build-system python-build-system)
+    (arguments `(#:tests? #f)) ; XXX: tests fail. Missing files?
+    (propagated-inputs
+      `(("python-mock" ,python-mock)
+        ("python-pytest" ,python-pytest)
+        ("python-pytest-runner" ,python-pytest-runner)))
+    (native-inputs `(("python-setuptools-scm" ,python-setuptools-scm)))
+    (home-page
+      "https://github.com/kvas-it/pytest-console-scripts")
+    (synopsis
+      "Pytest plugin for testing console scripts")
+    (description
+      "Pytest plugin for testing console scripts")
+    (license license:expat)))
+
+(define-public python-pytest-tornasync
+  (package
+    (name "python-pytest-tornasync")
+    (version "0.6.0.post2")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (pypi-uri "pytest-tornasync" version))
+        (sha256
+          (base32
+            "0pdyddbzppkfqwa7g17sdfl4w2v1hgsky78l8f4c1rx2a7cvd0fp"))))
+    (build-system python-build-system)
+    (arguments `(#:tests? #f)) ; XXX: Tests fail, missing files?
+    (propagated-inputs
+      `(("python-pytest" ,python-pytest)
+        ("python-tornado" ,python-tornado-6)))
+    (home-page
+      "https://github.com/eukaryote/pytest-tornasync")
+    (synopsis
+      "py.test plugin for testing Python 3.5+ Tornado code")
+    (description
+      "py.test plugin for testing Python 3.5+ Tornado code")
+    (license #f)))
