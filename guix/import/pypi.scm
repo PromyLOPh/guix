@@ -530,11 +530,14 @@ VERSION, SOURCE-URL, HOME-PAGE, SYNOPSIS, DESCRIPTION, and LICENSE."
            (let* ((info    (pypi-project-info pypi-package))
                   (version (project-info-version info))
                   (url     (distribution-url
-                            (latest-source-release pypi-package))))
+                            (latest-source-release pypi-package)))
+                  (newpkg (pypi->guix-package pypi-name))
+                  (changes (changed-inputs package newpkg)))
              (upstream-source
               (package (package-name package))
               (version version)
-              (urls (list url))))))))
+              (urls (list url))
+              (input-changes changes)))))))
 
 (define %pypi-updater
   (upstream-updater

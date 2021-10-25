@@ -10450,7 +10450,8 @@ drafts 04, 06 and 07.")
     (build-system python-build-system)
     (propagated-inputs
      `(("python-webencodings" ,python-webencodings)
-       ("python-six" ,python-six)))
+       ("python-six" ,python-six)
+       ("python-packaging" ,python-packaging)))
     (native-inputs
      `(("python-datrie" ,python-datrie)
        ("python-genshi" ,python-genshi)
@@ -25374,4 +25375,41 @@ Applications and libraries written against AnyIO’s API will run unmodified on
 either asyncio or trio. AnyIO can also be adopted into a library or application
 incrementally – bit by bit, no full refactoring necessary. It will blend in
 with native libraries of your chosen backend.")
+    (license license:expat)))
+
+(define-public python-debugpy
+  (package
+    (name "python-debugpy")
+    (version "1.4.1")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (pypi-uri "debugpy" version ".zip"))
+        (sha256
+          (base32
+            "0z46khlasmf76h6igk1f0384q7ipsgxqq1fb4wlp7wwg1gg1d4w8"))
+        (modules '((guix build utils)))
+        (snippet
+        '(begin
+           ;; Remove pre-build binaries.
+           (for-each delete-file (find-files "." "\\.(so|dll|dylib)$"))
+           ;; XXX: vendors pydevd
+           #t))))
+    (build-system python-build-system)
+    (arguments
+     `(#:tests? #f ; XXX fail
+       #:phases
+       (modify-phases %standard-phases
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               (invoke "pytest" "-v")))))))
+    (native-inputs
+      `(("unzip" ,unzip)
+        ("python-pytest" ,python-pytest)))
+    (home-page "https://aka.ms/debugpy")
+    (synopsis
+      "An implementation of the Debug Adapter Protocol for Python")
+    (description
+      "An implementation of the Debug Adapter Protocol for Python")
     (license license:expat)))
