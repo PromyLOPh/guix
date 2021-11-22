@@ -62,13 +62,14 @@ extension, such as '.tar.gz'."
 (define %python-build-system-modules
   ;; Build-side modules imported by default.
   `((guix build python-build-system)
+    (guix build json)
     ,@%gnu-build-system-modules))
 
 (define (default-python)
   "Return the default Python package."
   ;; Lazily resolve the binding to avoid a circular dependency.
-  (let ((python (resolve-interface '(gnu packages python))))
-    (module-ref python 'python-wrapper)))
+  (let ((python (resolve-interface '(gnu packages python-commencement))))
+    (module-ref python 'python-toolchain-for-build)))
 
 (define (default-python2)
   "Return the default Python 2 package."
@@ -165,26 +166,26 @@ pre-defined variants."
          (build-inputs `(("python" ,python)
                          ("sanity-check.py" ,(local-file sanity-check.py))
                          ,@native-inputs))
-         (outputs outputs)
+         (outputs (append outputs '(wheel)))
          (build python-build)
          (arguments (strip-keyword-arguments private-keywords arguments)))))
 
 (define* (python-build name inputs
                        #:key source
                        (tests? #t)
-                       (test-target "test")
-                       (use-setuptools? #t)
                        (configure-flags ''())
+                       (build-backend #f)
+                       (test-backend #f)
+                       (test-flags #f)
                        (phases '%standard-phases)
-                       (outputs '("out"))
+                       (outputs '("out" "wheel"))
                        (search-paths '())
                        (system (%current-system))
                        (guile #f)
                        (imported-modules %python-build-system-modules)
                        (modules '((guix build python-build-system)
                                   (guix build utils))))
-  "Build SOURCE using PYTHON, and with INPUTS.  This assumes that SOURCE
-provides a 'setup.py' file as its build system."
+  "Build SOURCE using PYTHON, and with INPUTS."
   (define build
     (with-imported-modules imported-modules
       #~(begin
@@ -194,9 +195,10 @@ provides a 'setup.py' file as its build system."
               #~(python-build #:name #$name
                               #:source #+source
                               #:configure-flags #$configure-flags
-                              #:use-setuptools? #$use-setuptools?
                               #:system #$system
-                              #:test-target #$test-target
+                              #:build-backend #$build-backend
+                              #:test-backend #$test-backend
+                              #:test-flags #$test-flags
                               #:tests? #$tests?
                               #:phases #$(if (pair? phases)
                                              (sexp->gexp phases)

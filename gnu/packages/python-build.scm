@@ -28,7 +28,9 @@
   #:use-module (guix build-system python)
   #:use-module (guix download)
   #:use-module (guix git-download)
-  #:use-module (guix packages))
+  #:use-module (guix packages)
+  #:use-module (gnu packages)
+  #:use-module (gnu packages python))
 
 ;;; Commentary:
 ;;;
@@ -37,6 +39,69 @@
 ;;; module should not depend on other modules containing Python packages.
 ;;;
 ;;; Code:
+
+(define-public python-setuptools
+  (package
+    (name "python-setuptools")
+    (version "52.0.0")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (pypi-uri "setuptools" version))
+      (sha256
+       (base32
+        "15ibjdjhkwgj6qbmpsxikkqdfsb1550z46fly7dm15ah4bk1wfpv"))
+      (modules '((guix build utils)))
+      (snippet
+       '(begin
+          ;; Remove included binaries which are used to build self-extracting
+          ;; installers for Windows.
+          ;; TODO: Find some way to build them ourself so we can include them.
+          (for-each delete-file (find-files "setuptools" "^(cli|gui).*\\.exe$"))
+          #t))))
+    (outputs '("out" "wheel"))
+    (build-system python-build-system)
+    ;; FIXME: Tests require pytest, which itself relies on setuptools.
+    ;; One could bootstrap with an internal untested setuptools.
+    (arguments
+     `(#:tests? #f
+       #:python ,python-wrapper ; Break cycle with default build system’s setuptools dependency.
+       #:phases (modify-phases %standard-phases
+                  ;; Use this setuptools’ sources to bootstrap themselves.
+                  (add-before 'build 'set-PYTHONPATH
+                    (lambda _
+                      (format #t "current working dir ~s~%" (getcwd))
+                      (setenv "GUIX_PYTHONPATH"
+                              (string-append ".:" (getenv "GUIX_PYTHONPATH")))
+                      #t)))))
+    ;; Required to build wheels.
+    (propagated-inputs `(("python-wheel" ,python-wheel)))
+    (home-page "https://pypi.org/project/setuptools/")
+    (synopsis
+     "Library designed to facilitate packaging Python projects")
+    (description
+     "Setuptools is a fully-featured, stable library designed to facilitate
+packaging Python projects, where packaging includes:
+Python package and module definitions,
+distribution package metadata,
+test hooks,
+project installation,
+platform-specific details,
+Python 3 support.")
+    ;; TODO: setuptools now bundles the following libraries:
+    ;; packaging, pyparsing, six and appdirs. How to unbundle?
+    (license (list license:psfl        ; setuptools itself
+                   license:expat       ; six, appdirs, pyparsing
+                   license:asl2.0      ; packaging is dual ASL2/BSD-2
+                   license:bsd-2))))
+    ;(properties `((python2-variant . ,(delay python2-setuptools))))))
+
+;; Break loop between python-setuptools and python-wheel.
+(define-public python-setuptools-bootstrap
+  (package
+    (inherit python-setuptools)
+    (name "python-setuptools-bootstrap")
+    (propagated-inputs `(("python-wheel" ,python-wheel-bootstrap)))))
 
 (define-public python-wheel
   (package
@@ -49,12 +114,11 @@
         (sha256
          (base32
           "0ii6f34rvpjg3nmw4bc2h7fhdsy38y1h93hghncfs5akfrldmj8h"))))
+    (outputs '("out" "wheel"))
     (build-system python-build-system)
     (arguments
-     ;; FIXME: The test suite runs "python setup.py bdist_wheel", which in turn
-     ;; fails to find the newly-built bdist_wheel library, even though it is
-     ;; available on PYTHONPATH.  What search path is consulted by setup.py?
-     '(#:tests? #f))
+     `(#:python ,python-wrapper)) ; Break cycle with python-toolchain-for-build.
+    (native-inputs `(("python-setuptools" ,python-setuptools-bootstrap)))
     (home-page "https://bitbucket.org/pypa/wheel/")
     (synopsis "Format for built Python packages")
     (description
@@ -66,6 +130,31 @@ unpacked archive preserves enough information to @code{Spread} (copy data and
 scripts to their final locations) at any later time.  Wheel files can be
 installed with a newer @code{pip} or with wheel's own command line utility.")
     (license license:expat)))
+
+(define-public python-wheel-bootstrap
+  (package
+    (inherit python-wheel)
+    (name "python-wheel-bootstrap")
+    (build-system copy-build-system)
+    (native-inputs '()) ; Break cycle to setuptools.
+    (arguments
+     `(#:install-plan
+       ;; XXX: Do not hard-code Python version.
+       '(("wheel" "lib/python3.9/site-packages/wheel"))
+       #:phases
+       (modify-phases %standard-phases
+         ;; Add metadata for setuptools, so it will find the wheel-building code.
+         (add-after 'install 'install-metadata
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (site-dir (string-append out "/lib/python3.9/site-packages"))
+                    (metadata-dir (string-append site-dir "/wheel.egg-info")))
+               (mkdir-p metadata-dir)
+               (call-with-output-file (string-append metadata-dir "/entry_points.txt")
+                 (lambda (port)
+                   (format port "~
+                           [distutils.commands]~@
+                           bdist_wheel = wheel.bdist_wheel:bdist_wheel~%")))))))))))
 
 (define-public python2-wheel
   (package-with-python2 python-wheel))

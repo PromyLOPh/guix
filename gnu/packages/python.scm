@@ -183,7 +183,7 @@
        (list "--enable-shared"          ;allow embedding
              "--with-system-expat"      ;for XML support
              "--with-system-ffi"        ;build ctypes
-             "--with-ensurepip=install" ;install pip and setuptools
+             "--with-ensurepip=no"      ;do not install pip and setuptools
              "--with-computed-gotos"    ;main interpreter loop optimization
              "--enable-unicode=ucs4"
 

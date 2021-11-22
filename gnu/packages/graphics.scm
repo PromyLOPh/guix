@@ -791,6 +791,7 @@ exception-handling library.")
     (build-system cmake-build-system)
     (arguments
      `(#:imported-modules ((guix build python-build-system)
+                           (guix build json)
                            ,@%cmake-build-system-modules)
        #:configure-flags '("-D2GEOM_BUILD_SHARED=ON"
                            "-D2GEOM_BOOST_PYTHON=ON"

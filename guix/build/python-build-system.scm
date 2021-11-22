@@ -30,11 +30,16 @@
 (define-module (guix build python-build-system)
   #:use-module ((guix build gnu-build-system) #:prefix gnu:)
   #:use-module (guix build utils)
+  #:use-module (guix build json)
   #:use-module (ice-9 match)
   #:use-module (ice-9 ftw)
   #:use-module (ice-9 format)
+  #:use-module (ice-9 rdelim)
+  #:use-module (ice-9 regex)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-26)
+  #:use-module (srfi srfi-34)
+  #:use-module (srfi srfi-35)
   #:export (%standard-phases
             add-installed-pythonpath
             site-packages
@@ -43,96 +48,45 @@
 
 ;; Commentary:
 ;;
-;; Builder-side code of the standard Python package build procedure.
+;; PEP 517-compatible build system for Python packages.
 ;;
+;; PEP 517 mandates the use of a TOML file called pyproject.toml at the
+;; project root, describing build and runtime dependencies, as well as the
+;; build system, which can be different from setuptools. This module uses
+;; that file to extract the build system used and call its wheel-building
+;; entry point build_wheel (see 'build). setuptools’ wheel builder is
+;; used as a fallback if either no pyproject.toml exists or it does not
+;; declare a build-system. It supports config_settings through the
+;; standard #:configure-flags argument.
 ;;
-;; Backgound about the Python installation methods
+;; This wheel, which is just a ZIP file with a file structure defined
+;; by PEP 427 (https://www.python.org/dev/peps/pep-0427/), is then unpacked
+;; and its contents are moved to the appropriate locations in 'install.
 ;;
-;; In Python there are different ways to install packages: distutils,
-;; setuptools, easy_install and pip.  All of these are sharing the file
-;; setup.py, introduced with distutils in Python 2.0. The setup.py file can be
-;; considered as a kind of Makefile accepting targets (or commands) like
-;; "build" and "install".  As of autumn 2016 the recommended way to install
-;; Python packages is using pip.
+;; Then entry points, as defined by the PyPa Entry Point Specification
+;; (https://packaging.python.org/specifications/entry-points/) are read
+;; from a file called entry_points.txt in the package’s site-packages
+;; subdirectory and scripts are written to bin/. These are not part of a
+;; wheel and expected to be created by the installing utility.
 ;;
-;; For both distutils and setuptools, running "python setup.py install" is the
-;; way to install Python packages.  With distutils the "install" command
-;; basically copies all packages into <prefix>/lib/pythonX.Y/site-packages.
-;;
-;; Some time later "setuptools" was established to enhance distutils.  To use
-;; setuptools, the developer imports setuptools in setup.py.  When importing
-;; setuptools, the original "install" command gets overwritten by setuptools'
-;; "install" command.
-;;
-;; The command-line tools easy_install and pip are both capable of finding and
-;; downloading the package source from PyPI (the Python Package Index).  Both
-;; of them import setuptools and execute the "setup.py" file under their
-;; control.  Thus the "setup.py" behaves as if the developer had imported
-;; setuptools within setup.py - even is still using only distutils.
-;;
-;; Setuptools' "install" command (to be more precise: the "easy_install"
-;; command which is called by "install") will put the path of the currently
-;; installed version of each package and it's dependencies (as declared in
-;; setup.py) into an "easy-install.pth" file.  In Guix each packages gets its
-;; own "site-packages" directory and thus an "easy-install.pth" of its own.
-;; To avoid conflicts, the python build system renames the file to
-;; <packagename>.pth in the phase rename-pth-file.  To ensure that Python will
-;; process the .pth file, easy_install also creates a basic "site.py" in each
-;; "site-packages" directory.  The file is the same for all packages, thus
-;; there is no need to rename it.  For more information about .pth files and
-;; the site module, please refere to
-;; https://docs.python.org/3/library/site.html.
-;;
-;; The .pth files contain the file-system paths (pointing to the store) of all
-;; dependencies.  So the dependency is hidden in the .pth file but is not
-;; visible in the file-system.  Now if packages A and B both required packages
-;; P, but in different versions, Guix will not detect this when installing
-;; both A and B to a profile. (For details and example see
-;; https://lists.gnu.org/archive/html/guix-devel/2016-10/msg01233.html.)
-;;
-;; Pip behaves a bit different then easy_install: it always executes
-;; "setup.py" with the option "--single-version-externally-managed" set.  This
-;; makes setuptools' "install" command run the original "install" command
-;; instead of the "easy_install" command, so no .pth file (and no site.py)
-;; will be created.  The "site-packages" directory only contains the package
-;; and the related .egg-info directory.
-;;
-;; This is exactly what we need for Guix and this is what we mimic in the
-;; install phase below.
-;;
-;; As a draw back, the magic of the .pth file of linking to the other required
-;; packages is gone and these packages have now to be declared as
-;; "propagated-inputs".
-;;
-;; Note: Importing setuptools also adds two sub-commands: "install_egg_info"
-;; and "install_scripts".  These sub-commands are executed even if
-;; "--single-version-externally-managed" is set, thus the .egg-info directory
-;; and the scripts defined in entry-points will always be created.
+;; Caveats:
+;; - There is no support for in-tree build backends.
 
+;; Base error type.
+(define-condition-type &python-build-error &error
+  python-build-error?)
 
-(define setuptools-shim
-  ;; Run setup.py with "setuptools" being imported, which will patch
-  ;; "distutils". This is needed for packages using "distutils" instead of
-  ;; "setuptools" since the former does not understand the
-  ;; "--single-version-externally-managed" flag.
-  ;; Python code taken from pip 9.0.1 pip/utils/setuptools_build.py
-  (string-append
-   "import setuptools, tokenize;__file__='setup.py';"
-   "f=getattr(tokenize, 'open', open)(__file__);"
-   "code=f.read().replace('\\r\\n', '\\n');"
-   "f.close();"
-   "exec(compile(code, __file__, 'exec'))"))
+;; Raised when 'check cannot find a valid test system in the inputs.
+(define-condition-type &test-system-not-found &python-build-error
+  test-system-not-found?)
 
-(define (call-setuppy command params use-setuptools?)
-  (if (file-exists? "setup.py")
-      (begin
-         (format #t "running \"python setup.py\" with command ~s and parameters ~s~%"
-                command params)
-         (if use-setuptools?
-             (apply invoke "python" "-c" setuptools-shim
-                    command params)
-             (apply invoke "python" "./setup.py" command params)))
-      (error "no setup.py found")))
+;; Raised when multiple wheels are created by 'build.
+(define-condition-type &cannot-extract-multiple-wheels &python-build-error
+  cannot-extract-multiple-wheels?)
+
+;; Raised, when no wheel has been built by the build system.
+(define-condition-type &no-wheels-built &python-build-error
+  no-wheels-built?)
 
 (define* (sanity-check #:key tests? inputs outputs #:allow-other-keys)
   "Ensure packages depending on this package via setuptools work properly,
@@ -143,23 +97,83 @@ without errors."
     (with-directory-excursion "/tmp"
       (invoke "python" sanity-check.py (site-packages inputs outputs)))))
 
-(define* (build #:key use-setuptools? #:allow-other-keys)
+(define* (build #:key outputs build-backend configure-flags #:allow-other-keys)
   "Build a given Python package."
-  (call-setuppy "build" '() use-setuptools?)
+
+  (define (pyproject.toml->build-backend file)
+    "Look up the build backend in a pyproject.toml file."
+    (call-with-input-file file
+      (lambda (in)
+        (let loop ((line (read-line in 'concat)))
+          (if (eof-object? line)
+              #f
+              (let ((m (string-match "build-backend = [\"'](.+)[\"']" line)))
+                (if m (match:substring m 1)
+                    (loop (read-line in 'concat)))))))))
+
+  (let* ((wheel-output (assoc-ref outputs "wheel"))
+         (wheel-dir (if wheel-output wheel-output "dist"))
+         ;; There is no easy way to get data from Guile into Python via
+         ;; s-expressions, but we have JSON serialization already, which Python
+         ;; also supports out-of-the-box.
+         (config-settings (call-with-output-string (cut write-json configure-flags <>)))
+         ;; python-setuptools’ default backend supports setup.py *and*
+         ;; pyproject.toml. Allow overriding this automatic detection via
+         ;; build-backend.
+         (auto-build-backend (if (file-exists? "pyproject.toml")
+                               (pyproject.toml->build-backend "pyproject.toml")
+                               #f))
+         ;; Use build system detection here and not in importer, because a) we
+         ;; have alot of legacy packages and b) the importer cannot update arbitrary
+         ;; fields in case a package switches its build system.
+         (use-build-backend (or
+                              build-backend
+                              auto-build-backend
+                              "setuptools.build_meta")))
+    (format #t "Using '~a' to build wheels, auto-detected '~a', override '~a'.~%"
+               use-build-backend auto-build-backend build-backend)
+    (mkdir-p wheel-dir)
+    ;; Call the PEP 517 build function, which drops a .whl into wheel-dir.
+    (invoke "python" "-c" "import sys, importlib, json
+config_settings = json.loads (sys.argv[3])
+builder = importlib.import_module(sys.argv[1])
+builder.build_wheel(sys.argv[2], config_settings=config_settings)"
+            use-build-backend wheel-dir config-settings))
   #t)
 
-(define* (check #:key tests? test-target use-setuptools? #:allow-other-keys)
+(define* (check #:key inputs outputs tests? test-backend test-flags #:allow-other-keys)
   "Run the test suite of a given Python package."
   (if tests?
-      ;; Running `setup.py test` creates an additional .egg-info directory in
-      ;; build/lib in some cases, e.g. if the source is in a sub-directory
-      ;; (given with `package_dir`). This will by copied to the output, too,
-      ;; so we need to remove.
-      (let ((before (find-files "build" "\\.egg-info$" #:directories? #t)))
-        (call-setuppy test-target '() use-setuptools?)
-        (let* ((after (find-files "build" "\\.egg-info$" #:directories? #t))
-               (inter (lset-difference string=? after before)))
-          (for-each delete-file-recursively inter)))
+    ;; Unfortunately with PEP 517 there is no common method to specify test
+    ;; systems. Guess test system based on inputs instead.
+    (let* ((pytest (which "pytest"))
+           (nosetests (which "nosetests"))
+           (nose2 (which "nose2"))
+           (have-setup-py (file-exists? "setup.py"))
+           (use-test-backend
+            (or
+              test-backend
+              ;; Prefer pytest
+              (if pytest 'pytest #f)
+              (if nosetests 'nose #f)
+              (if nose2 'nose2 #f)
+              ;; But fall back to setup.py, which should work for most
+              ;; packages. XXX: would be nice not to depend on setup.py here? fails
+              ;; more often than not to find any tests at all. Maybe we can run
+              ;; `python -m unittest`?
+              (if have-setup-py 'setup.py #f))))
+        (format #t "Using ~a~%" use-test-backend)
+        (match use-test-backend
+          ('pytest
+           (apply invoke (cons pytest (or test-flags '("-vv")))))
+          ('nose
+           (apply invoke (cons nosetests (or test-flags '("-v")))))
+          ('nose2
+           (apply invoke (cons nose2 (or test-flags '("-v" "--pretty-assert")))))
+          ('setup.py
+           (apply invoke (append '("python" "setup.py") (or test-flags '("test" "-v")))))
+          ;; The developer should explicitly disable tests in this case.
+          (else (raise (condition (&test-system-not-found))))))
       (format #t "test suite not run~%"))
   #t)
 
@@ -196,33 +210,166 @@ running checks after installing the package."
                                 "/bin:"
                                 (getenv "PATH"))))
 
-(define* (install #:key inputs outputs (configure-flags '()) use-setuptools?
-                  #:allow-other-keys)
-  "Install a given Python package."
-  (let* ((out (python-output outputs))
+(define* (install #:key inputs outputs (configure-flags '()) #:allow-other-keys)
+  "Install a wheel file according to PEP 427"
+  ;; See https://www.python.org/dev/peps/pep-0427/#installing-a-wheel-distribution-1-0-py32-none-any-whl
+  (let* ((site-dir (site-packages inputs outputs))
          (python (assoc-ref inputs "python"))
-         (major-minor (map string->number
-                           (take (string-split (python-version python) #\.) 2)))
-         (<3.7? (match major-minor
-                   ((major minor)
-                    (or (< major 3) (and (= major 3) (< minor 7))))))
-         (params (append (list (string-append "--prefix=" out)
-                               "--no-compile")
-                         (if use-setuptools?
-                             ;; distutils does not accept these flags
-                             (list "--single-version-externally-managed"
-                                   "--root=/")
-                             '())
-                         configure-flags)))
-    (call-setuppy "install" params use-setuptools?)
-    ;; Rather than produce potentially non-reproducible .pyc files on Pythons
-    ;; older than 3.7, whose 'compileall' module lacks the
-    ;; '--invalidation-mode' option, do not generate any.
-    (unless <3.7?
-      (invoke "python" "-m" "compileall" "--invalidation-mode=unchecked-hash"
-              out))))
+         (out (assoc-ref outputs "out")))
+    (define (extract file)
+      "Extract wheel (ZIP file) into site-packages directory"
+      ;; Use Python’s zipfile to avoid extra dependency
+      (invoke "python" "-m" "zipfile" "-e" file site-dir))
 
-(define* (wrap #:key inputs outputs #:allow-other-keys)
+    (define python-hashbang
+      (string-append "#!" python "/bin/python"))
+
+    (define* (merge-directories source destination #:optional (post-move #f))
+      "Move all files in SOURCE into DESTINATION, merging the two directories."
+      (format #t "Merging directory ~a into ~a~%" source destination)
+      (for-each
+        (lambda (file)
+          (format #t "~a/~a -> ~a/~a~%" source file destination file)
+          (mkdir-p destination)
+          (rename-file
+              (string-append source "/" file)
+              (string-append destination "/" file))
+          (when post-move
+            (post-move file)))
+        (scandir source (negate (cut member <> '("." "..")))))
+      (rmdir source))
+
+    (define (expand-data-directory directory)
+      "Move files from all .data subdirectories to their respective
+destinations."
+      ;; Python’s distutils.command.install defines this mapping from source to
+      ;; destination mapping.
+      (let ((source (string-append directory "/scripts"))
+            (destination (string-append out "/bin")))
+        (when (file-exists? source)
+          (merge-directories
+           source
+           destination
+           (lambda (f)
+             (let ((dest-path (string-append destination "/" f)))
+               (chmod dest-path #o755)
+               (substitute* dest-path (("#!python") python-hashbang)))))))
+      ;; XXX: Why does Python not use share/ here?
+      (let ((source (string-append directory "/data"))
+            (destination (string-append out "/share")))
+        (when (file-exists? source)
+          (merge-directories source destination)))
+      (let* ((distribution (car (string-split (basename directory) #\-)))
+            (source (string-append directory "/headers"))
+            (destination (string-append out "/include/python" (python-version python) "/" distribution)))
+        (when (file-exists? source)
+          (merge-directories source destination))))
+    
+  (define (list-directories base predicate)
+    ;; Cannot use find-files here, because it’s recursive.
+    (scandir
+      base
+      (lambda (name)
+        (let ((stat (lstat (string-append base "/" name))))
+        (and
+          (not (member name '("." "..")))
+          (eq? (stat:type stat) 'directory)
+          (predicate name stat))))))
+
+  (let* ((wheel-output (assoc-ref outputs "wheel"))
+         (wheel-dir (if wheel-output wheel-output "dist"))
+         (wheels (find-files wheel-dir "\\.whl$"))) ; XXX: do not recurse
+    (cond
+    ((> (length wheels) 1) ; This code does not support multiple wheels
+                                ; yet, because their outputs would have to be
+                                ; merged properly.
+      (raise (condition (&cannot-extract-multiple-wheels))))
+      ((= (length wheels) 0)
+       (raise (condition (&no-wheels-built)))))
+    (for-each extract wheels))
+  (let ((datadirs (map
+                    (cut string-append site-dir "/" <>)
+                    (list-directories site-dir (file-name-predicate "\\.data$")))))
+    (for-each (lambda (directory)
+                (expand-data-directory directory)
+                (rmdir directory))
+              datadirs))
+  #t))
+
+(define* (compile-bytecode #:key inputs outputs (configure-flags '()) #:allow-other-keys)
+  "Compile installed byte-code in site-packages."
+  (let ((site-dir (site-packages inputs outputs)))
+    (invoke "python" "-m" "compileall" site-dir)
+    ;; XXX: We could compile with -O and -OO too here, at the cost of more space.
+    #t))
+
+(define* (create-entrypoints #:key inputs outputs (configure-flags '()) #:allow-other-keys)
+  "Implement Entry Points Specification
+(https://packaging.python.org/specifications/entry-points/) by PyPa,
+which creates runnable scripts in bin/ from entry point specification
+file entry_points.txt. This is necessary, because wheels do not contain
+these binaries and installers are expected to create them."
+
+  (define (entry-points.txt->entry-points file)
+    "Specialized parser for Python configfile-like files, in particular
+entry_points.txt. Returns a list of console_script and gui_scripts
+entry points."
+    (call-with-input-file file
+      (lambda (in)
+        (let loop ((line (read-line in))
+                   (inside #f)
+                   (result '()))
+          (if (eof-object? line)
+            result
+            (let* ((group-match (string-match "^\\[(.+)\\]$" line))
+                  (group-name (if group-match (match:substring group-match 1) #f))
+                  (next-inside
+                   (if (not group-name)
+                     inside
+                     (or
+                       (string=? group-name "console_scripts")
+                       (string=? group-name "gui_scripts"))))
+                  (item-match (string-match "^([^ =]+)\\s*=\\s*([^:]+):(.+)$" line)))
+              (if (and inside item-match)
+                (loop (read-line in) next-inside (cons (list
+                                                        (match:substring item-match 1)
+                                                        (match:substring item-match 2)
+                                                        (match:substring item-match 3))
+                                                         result))
+                (loop (read-line in) next-inside result))))))))
+
+  (define (create-script path name module function)
+    "Create a Python script from an entry point’s NAME, MODULE and
+  FUNCTION and return write it to PATH/NAME."
+    (let ((interpreter (which "python3"))
+          (file-path (string-append path "/" name)))
+      (format #t "Creating entry point for '~a.~a' at '~a'.~%" module function
+                 file-path)
+      (call-with-output-file file-path
+        (lambda (port)
+          ;; Technically the script could also include search-paths,
+          ;; but having a generic 'wrap phases also handles manually
+          ;; written entry point scripts.
+          (format port "#!~a
+# Auto-generated entry point script.
+import sys
+import ~a as mod
+sys.exit (mod.~a ())~%" interpreter module function)))
+        (chmod file-path #o755)))
+
+  (let* ((site-dir (site-packages inputs outputs))
+         (out (assoc-ref outputs "out"))
+         (bin-dir (string-append out "/bin"))
+         (entry-point-files (find-files site-dir "^entry_points.txt$")))
+    (mkdir-p bin-dir)
+    (for-each
+      (lambda (f)
+        (for-each
+          (lambda (ep) (apply create-script (cons bin-dir ep)))
+          (entry-points.txt->entry-points f)))
+      entry-point-files)))
+
+(define* (wrap #:key inputs outputs search-paths #:allow-other-keys)
   (define (list-of-files dir)
     (find-files dir (lambda (file stat)
                       (and (eq? 'regular (stat:type stat))
@@ -241,6 +388,20 @@ running checks after installing the package."
   (define %sh (delay (search-input-file inputs "bin/bash")))
   (define (sh) (force %sh))
 
+    (define input-directories
+    ;; The "source" input can be a directory, but we don't want it for search
+    ;; paths.  See <https://issues.guix.gnu.org/44924>.
+    (match (alist-delete "source" inputs)
+      (((_ . dir) ...)
+       dir)))
+
+    (for-each (match-lambda
+             ((env-var (files ...) separator type pattern)
+              (display (search-path-as-list files input-directories
+                                     #:type type
+                                     #:pattern pattern))))
+            search-paths)
+
   (let* ((var `("GUIX_PYTHONPATH" prefix
                 ,(search-path-as-string->list
                   (or (getenv "GUIX_PYTHONPATH") "")))))
@@ -250,29 +411,12 @@ running checks after installing the package."
                             files)))
               bindirs)))
 
-(define* (rename-pth-file #:key name inputs outputs #:allow-other-keys)
-  "Rename easy-install.pth to NAME.pth to avoid conflicts between packages
-installed with setuptools."
-  ;; Even if the "easy-install.pth" is not longer created, we kept this phase.
-  ;; There still may be packages creating an "easy-install.pth" manually for
-  ;; some good reason.
-  (let* ((site-packages (site-packages inputs outputs))
-         (easy-install-pth (string-append site-packages "/easy-install.pth"))
-         (new-pth (string-append site-packages "/" name ".pth")))
-    (when (file-exists? easy-install-pth)
-      (rename-file easy-install-pth new-pth))))
-
-(define* (ensure-no-mtimes-pre-1980 #:rest _)
-  "Ensure that there are no mtimes before 1980-01-02 in the source tree."
-  ;; Rationale: patch-and-repack creates tarballs with timestamps at the POSIX
-  ;; epoch, 1970-01-01 UTC.  This causes problems with Python packages,
-  ;; because Python eggs are ZIP files, and the ZIP format does not support
-  ;; timestamps before 1980.
-  (let ((early-1980 315619200))  ; 1980-01-02 UTC
-    (ftw "." (lambda (file stat flag)
-               (unless (<= early-1980 (stat:mtime stat))
-                 (utime file early-1980 early-1980))
-               #t))))
+(define* (set-SOURCE-DATE-EPOCH #:rest _)
+  "Set the 'SOURCE_DATE_EPOCH' environment variable.  This is used by tools
+that incorporate timestamps as a way to tell them to use a fixed timestamp.
+See https://reproducible-builds.org/specs/source-date-epoch/."
+  (setenv "SOURCE_DATE_EPOCH" "315619200") ;; python-wheel respects this variable and sets pre-1980 times on files in zip files, which is unsupported
+  #t)
 
 (define* (enable-bytecode-determinism #:rest _)
   "Improve determinism of pyc files."
@@ -299,11 +443,11 @@ by Cython."
   ;; prefix directory.  The check phase is moved after the installation phase
   ;; to ease testing the built package.
   (modify-phases gnu:%standard-phases
-    (add-after 'unpack 'ensure-no-mtimes-pre-1980 ensure-no-mtimes-pre-1980)
-    (add-after 'ensure-no-mtimes-pre-1980 'enable-bytecode-determinism
+    (add-after 'unpack 'enable-bytecode-determinism
       enable-bytecode-determinism)
     (add-after 'enable-bytecode-determinism 'ensure-no-cythonized-files
       ensure-no-cythonized-files)
+    (replace 'set-SOURCE-DATE-EPOCH set-SOURCE-DATE-EPOCH)
     (delete 'bootstrap)
     (delete 'configure)                 ;not needed
     (replace 'build build)
@@ -313,9 +457,11 @@ by Cython."
     (add-after 'add-install-to-pythonpath 'add-install-to-path
       add-install-to-path)
     (add-after 'add-install-to-path 'wrap wrap)
+    ;; must be before tests, so they can use installed packages’ entry points.
+    (add-before 'wrap 'create-entrypoints create-entrypoints)
     (add-after 'wrap 'check check)
     (add-after 'check 'sanity-check sanity-check)
-    (add-before 'strip 'rename-pth-file rename-pth-file)))
+    (add-before 'check 'compile-bytecode compile-bytecode)))
 
 (define* (python-build #:key inputs (phases %standard-phases)
                        #:allow-other-keys #:rest args)

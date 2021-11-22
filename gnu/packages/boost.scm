@@ -87,6 +87,7 @@
        ("tcsh" ,tcsh)))
     (arguments
      `(#:imported-modules ((guix build python-build-system)
+                           (guix build json)
                            ,@%gnu-build-system-modules)
        #:modules (((guix build python-build-system) #:select (python-version))
                   ,@%gnu-build-system-modules)

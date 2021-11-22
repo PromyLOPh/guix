@@ -2140,6 +2140,7 @@ module provides support functions to the automatically generated code.")
                   ((guix build python-build-system) #:select (python-version))
                   ,@%gnu-build-system-modules)
        #:imported-modules ((guix build python-build-system)
+                           (guix build json)
                            ,@%gnu-build-system-modules)
        #:phases
        (modify-phases %standard-phases
