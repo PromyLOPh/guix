@@ -12380,7 +12380,8 @@ automatically detect a wide range of file encodings.")
         (base32 "0rr3iv2xw4rz5ijnfqk229fw85cq6p6rhqqsilm0ldzncblfg63h"))))
     (build-system python-build-system)
     (native-inputs
-     `(("python-pytest" ,python-pytest)))
+     `(("python-pytest" ,python-pytest)
+       ("python-pytest-cov" ,python-pytest-cov)))
     (home-page "https://github.com/ousret/charset_normalizer")
     (synopsis "Universal Charset Detector, alternative to Chardet")
     (description "This library helps you read text from an unknown charset
