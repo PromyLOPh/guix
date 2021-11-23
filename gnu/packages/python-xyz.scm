@@ -26678,6 +26678,9 @@ Qt applications.")
     (build-system python-build-system)
     (propagated-inputs
      `(("python-pyyaml" ,python-pyyaml)))
+    (native-inputs
+     `(("python-flit-core" ,python-flit-core)
+       ("python-nose" ,python-nose)))
     (home-page "https://github.com/beetbox/confuse")
     (synopsis "Painless YAML configuration")
     (description "Confuse is a configuration library for Python that uses
