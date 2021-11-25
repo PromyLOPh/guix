@@ -9662,7 +9662,7 @@ applications.")
     (build-system python-build-system)
     (arguments
      `(#:configure-flags
-       (list (string-append "--zmq=" (assoc-ref %build-inputs "zeromq")))
+       `(@ ("--zmq" . ,(assoc-ref %build-inputs "zeromq")))
        #:phases
        (modify-phases %standard-phases
          (add-before 'check 'build-extensions
