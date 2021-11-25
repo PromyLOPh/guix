@@ -1927,32 +1927,11 @@ C/C++, R, and more, and uploads it to the @code{codecov.io} service.")
         (base32
          "1fwv4d3p54xx1x942s104irr35lszvv6jnr4nn1scsfvc0m1qmbk"))))
     (build-system python-build-system)
-    (arguments
-     `(#:tests? #f ; this package does not even have a setup.py
-       #:modules ((guix build python-build-system)
-                  (guix build utils)
-                  (srfi srfi-1))
-       #:phases
-       (modify-phases %standard-phases
-         (replace 'build
-           (lambda _
-             ;; A ZIP archive should be generated, but it fails with "ZIP does
-             ;; not support timestamps before 1980".  Luckily,
-             ;; SOURCE_DATE_EPOCH is respected, which we set to some time in
-             ;; 1980.
-             (setenv "SOURCE_DATE_EPOCH" "315532800")
-             (invoke "flit" "build")))
-         (replace 'install
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (add-installed-pythonpath inputs outputs)
-             (let ((out (assoc-ref outputs "out")))
-               (for-each (lambda (wheel)
-                           (format #true wheel)
-                           (invoke "python" "-m" "pip" "install"
-                                   wheel (string-append "--prefix=" out)))
-                         (find-files "dist" "\\.whl$"))))))))
+    ;; pyproject.toml uses wrong package.
+    (arguments `(#:build-backend "flit_core.buildapi"))
     (native-inputs
-     `(("python-flit" ,python-flit)))
+     `(("python-flit-core" ,python-flit-core)
+       ("python-pytest" ,python-pytest)))
     (home-page "https://github.com/takluyver/testpath")
     (synopsis "Test utilities for code working with files and commands")
     (description
