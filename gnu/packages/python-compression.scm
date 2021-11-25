@@ -56,9 +56,7 @@
          "0j46wab4b09s3favjzp3zs1cn2sn8pr7qyngs5wn31hpqqxbbz76"))))
     (build-system python-build-system)
     (native-inputs
-     `(("python-pep517" ,python-pep517)
-       ("python-setuptools" ,python-setuptools)
-       ("python-setuptools-scm" ,python-setuptools-scm)
+     `(("python-setuptools-scm" ,python-setuptools-scm)
        ("python-coverage" ,python-coverage)
        ("python-coveralls" ,python-coveralls)
        ("python-pyannotate" ,python-pyannotate)
