@@ -111,9 +111,7 @@ Jump conversion filter by CFFI for Python.")
     (propagated-inputs
      `(("python-cffi" ,python-cffi)))
     (native-inputs
-     `(("python-setuptools" ,python-setuptools)
-       ("python-setuptools-scm" ,python-setuptools-scm)
-       ("python-pep517" ,python-pep517)
+     `(("python-setuptools-scm" ,python-setuptools-scm)
        ("python-coverage" ,python-coverage)
        ("python-pytest" ,python-pytest)
        ("python-pytest-cov" ,python-pytest-cov)))
