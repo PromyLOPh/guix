@@ -179,6 +179,7 @@
   #:use-module (gnu packages protobuf)
   #:use-module (gnu packages pulseaudio)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-build)
   #:use-module (gnu packages python-crypto)
   #:use-module (gnu packages python-web)
   #:use-module (gnu packages python-xyz)
@@ -6828,7 +6829,8 @@ DAV, and others.")
     (native-inputs
      `(("gobject-introspection" ,gobject-introspection)
        ("pkg-config" ,pkg-config)
-       ("vala" ,vala)))
+       ("vala" ,vala)
+       ("python-setuptools" ,python-setuptools))) ; For pkg_resources.
     (propagated-inputs
      ;; Both of these are required by gusb.pc.
      `(("glib" ,glib)
