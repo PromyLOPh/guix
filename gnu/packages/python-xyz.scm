@@ -2349,9 +2349,13 @@ of @code{xmlfile}.")
     (build-system python-build-system)
     (arguments
      `(#:phases (modify-phases %standard-phases
-                  (replace 'check
+                  (add-before 'check 'set-mtime
                     (lambda _
-                      (invoke "pytest"))))))
+                      (let ((early-1980 315619200))  ; 1980-01-02 UTC
+                        (for-each
+                          (lambda (file)
+                            (utime file early-1980 early-1980))
+                         (find-files "."))))))))
     (native-inputs
      ;; For the test suite.
      `(("python-lxml" ,python-lxml)
