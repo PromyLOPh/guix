@@ -610,7 +610,7 @@ merging, minifying and compiling CSS and Javascript files.")
 (define-public python-django-jinja
   (package
     (name "python-django-jinja")
-    (version "2.6.0")
+    (version "2.9.1")
     (source
      (origin
        (method git-fetch)
@@ -620,12 +620,13 @@ merging, minifying and compiling CSS and Javascript files.")
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "06ldbkfkm6sc0p9sqpjph06gxrqpj78ih3dc2yik2fcba2y5mak1"))))
+         "0p9pkn6jjzagpnvcrl9c2vjqamkms7ymvyhhmaqqqhrlv89qnzp7"))))
     (build-system python-build-system)
     (propagated-inputs
      `(("python-jinja2" ,python-jinja2)
        ("python-pytz" ,python-pytz)
-       ("python-django-pipeline" ,python-django-pipeline)))
+       ("python-django-pipeline" ,python-django-pipeline)
+       ("python-django", python-django)))
     (arguments
      '(;; TODO Tests currently fail due to issues with the configuration for
        ;; django-pipeline
