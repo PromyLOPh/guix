@@ -15564,7 +15564,8 @@ docstring and colored output.")
     (build-system python-build-system)
     (native-inputs
      `(("python-pytest" ,python-pytest)
-       ("python-pyyaml" ,python-pyyaml)))
+       ("python-pyyaml" ,python-pyyaml)
+       ("python-poetry-core" ,python-poetry-core)))
     (home-page "https://github.com/sdispater/tomlkit")
     (synopsis "Style-preserving TOML library")
     (description
