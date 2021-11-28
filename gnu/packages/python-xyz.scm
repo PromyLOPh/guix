@@ -1609,9 +1609,9 @@ library.")
         (base32
          "16gpx5hm73ah5n1079ng0vy381hl802v606npkx4x8nb0gg05vba"))))
     (build-system python-build-system)
-    (arguments '(#:test-target "check"))
     (native-inputs
-     `(("python-pbr" ,python-pbr)))
+     `(("python-pbr" ,python-pbr)
+       ("python-nose" ,python-nose)))
     (home-page "https://launchpad.net/pylockfile")
     (synopsis "Platform-independent file locking module")
     (description
