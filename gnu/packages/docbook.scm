@@ -505,6 +505,13 @@ the in DocBook SGML DTDs.")
        #:tests? #f                      ;no 'test' command
        #:phases
        (modify-phases %standard-phases
+         ;; The setup.py defines multiple custom commands incompatible with wheel generation.
+         (replace 'build
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (invoke "python" "setup.py" "build")))
+         (replace 'install
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (invoke "python" "setup.py" "install" (string-append "--prefix=" (assoc-ref outputs "out")))))
          (add-after 'wrap 'set-path
            (lambda* (#:key inputs outputs #:allow-other-keys)
              (let ((out (assoc-ref outputs "out")))
