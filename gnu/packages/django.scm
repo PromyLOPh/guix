@@ -786,7 +786,8 @@ entries, photos, book chapters, or anything else.")
          "19vrbd5s12qw4qlg5n8ldv7zz2rs5y2sdid1i7lvgp92m71dayvc"))))
     (build-system python-build-system)
     (arguments
-     '(#:phases
+     '(#:tests? #f ; Tests depend on node.
+       #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'patch-source
            (lambda _
