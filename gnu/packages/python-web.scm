@@ -4618,6 +4618,7 @@ library to create slugs from unicode strings while keeping it DRY.")
         (base32
          "0pmigd521j2228xf8x34vbx0niwvms7xl7za0lymywj0vydjqxiy"))))
     (build-system python-build-system)
+    (arguments `(#:tests? #f)) ; No tests in PyPi release.
     (propagated-inputs
      `(("python-jinja2" ,python-jinja2)
        ("python-six" ,python-six)))
