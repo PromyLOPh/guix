@@ -23478,6 +23478,7 @@ time-or-computationally-expensive properties quick and easy and works in Python
        (sha256
         (base32 "1q05pzca3wfwgnbg03l3bagnhh348yx68w4aa91rg3g8zlviwjz1"))))
     (build-system python-build-system)
+    (arguments `(#:tests? #f)) ; Tests depend on selenium.
     (propagated-inputs
      `(("python-branca" ,python-branca)
        ("python-jinja2" ,python-jinja2)
