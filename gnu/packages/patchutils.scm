@@ -390,22 +390,22 @@ application = get_wsgi_application()\n") port)))))
                (for-each (lambda (directory)
                            (copy-recursively
                             directory
-                            (string-append out-site-packages directory)))
+                            (string-append out-site-packages "/" directory)))
                          '(;; Contains the python code
                            "patchwork"
                            ;; Contains the templates for the generated HTML
                            "templates"))
                (delete-file-recursively
-                (string-append out-site-packages "patchwork/tests"))
+                (string-append out-site-packages "/patchwork/tests"))
 
                ;; Install patchwork related tools
                (for-each (lambda (file)
                            (install-file file (string-append out "/bin")))
                          (list
                           (string-append out-site-packages
-                                         "patchwork/bin/parsemail.sh")
+                                         "/patchwork/bin/parsemail.sh")
                           (string-append out-site-packages
-                                         "patchwork/bin/parsemail-batch.sh")))
+                                         "/patchwork/bin/parsemail-batch.sh")))
 
                ;; Collect the static assets, this includes JavaScript, CSS and
                ;; fonts. This is a standard Django process when running a
