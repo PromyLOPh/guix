@@ -27982,3 +27982,25 @@ interfaces.")
     (description
      "This package provides a Python interface to iw wireless tools.")
     (license license:gpl2)))
+
+(define-public python-tomli-w
+  (package
+    (name "python-tomli-w")
+    (version "0.4.0")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (pypi-uri "tomli_w" version))
+        (sha256
+          (base32 "1di60lf367i51mcchgjhis466yyadn0z13632kibca5n0fz3lr27"))))
+    (build-system python-build-system)
+    (arguments `(#:tests? #f))
+    (native-inputs
+     `(("python-flit-core" ,python-flit-core)))
+    (home-page "https://github.com/hukkin/tomli-w")
+    (synopsis "TOML writer for Python")
+    (description "Tomli-W is a Python library for writing TOML. It is a
+write-only counterpart to @code{python-tomli}, which is a read-only TOML
+parser. Tomli-W is fully compatible with TOML v1.0.0.")
+    (license license:expat)))
+
