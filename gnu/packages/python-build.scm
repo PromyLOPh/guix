@@ -390,18 +390,11 @@ information.")
                 "17xqija27x4my1yrnk6q2vwln60r39g2dhby9zg2l99qjgbdrahs"))))
     (build-system python-build-system)
     (arguments
-     `(#:tests? #f                      ;to tests in the PyPI release
-       #:phases (modify-phases %standard-phases
-                  (add-after 'unpack 'use-toml-instead-of-tomli
-                    ;; Using toml instead of tomli eases bootstrapping.
-                    (lambda _
-                      (substitute* "setup.cfg"
-                        (("tomli>=.*")
-                         "toml\n")))))))
-    (propagated-inputs
-     `(("python-packaging" ,python-packaging-bootstrap)
-       ("python-pep517", python-pep517-bootstrap)
-       ("python-toml" ,python-toml)))
+     `(#:tests? #f))
+    (inputs
+     `(("python-pep517", python-pep517-bootstrap)
+       ("python-tomli" ,python-tomli)
+       ("python-packaging" ,python-packaging-bootstrap)))
     (home-page "https://pypa-build.readthedocs.io/en/latest/")
     (synopsis "Simple Python PEP 517 package builder")
     (description "The @command{build} command invokes the PEP 517 hooks to
