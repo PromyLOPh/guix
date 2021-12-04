@@ -265,20 +265,24 @@ Python file, so it can be easily copied into your project.")
   (hidden-package
    (package
      (name "python-pep517-bootstrap")
-     (version "0.9.1")
-     (source
-      (origin
-        (method url-fetch)
-        (uri (pypi-uri "pep517" version))
-        (sha256
-         (base32
-          "0zqidxah03qpnp6zkg3zd1kmd5f79hhdsfmlc0cldaniy80qddxf"))))
+     (version "0.12.0")
+     (source (origin
+               (method git-fetch)
+               (uri (git-reference
+                     (url "https://github.com/pypa/pep517")
+                     (commit (string-append "v" version))))
+               (file-name (git-file-name name version))
+               (sha256
+                (base32
+                 "1giljizqy337lhbhx7m0lbxw9fvsjqd97fgkf3i0mw3p7wpn3jy7"))))
      (build-system python-build-system)
      (arguments
-      `(#:tests? #f))                     ;to avoid circular dependencies
+      `(#:tests? #f)) ; To avoid circular dependencies.
      (propagated-inputs
-      `(("python-toml" ,python-toml)
-        ("python-wheel" ,python-wheel)))
+      `(("python-tomli" ,python-tomli)))
+     (native-inputs
+      `(;; Build system.
+       ("python-flit-core" ,python-flit-core-bootstrap)))
      (home-page "https://github.com/pypa/pep517")
      (synopsis "Wrappers to build Python packages using PEP 517 hooks")
      (description
