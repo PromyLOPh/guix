@@ -1169,7 +1169,6 @@ similar to vi/ex.")
     (build-system python-build-system)
     (arguments
      `(#:python ,python-2
-       #:use-setuptools? #f
        #:tests? #f ;; Failing tests
        #:phases
        (modify-phases %standard-phases

@@ -68,9 +68,6 @@
     (arguments
      `(#:python ,python-2
        #:tests? #f                      ; test suite requires networking
-       ;; wicd directly extends distutils command classes,
-       ;; we can't easily make setup.py use setuptools.
-       #:use-setuptools? #f
        #:phases
        (modify-phases %standard-phases
          (add-before 'build 'configure

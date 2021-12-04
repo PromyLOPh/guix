@@ -40,8 +40,7 @@
                "1cfdzfbi6wslw7k0dc6ad6xrgs75iwsl91cg73w4myswaqqkfk3z"))))
    (build-system python-build-system)
    (arguments
-    `(#:use-setuptools? #f
-      #:phases
+    `(#:phases
       (modify-phases %standard-phases
         (add-after 'unpack 'patch-/usr
           (lambda* (#:key outputs #:allow-other-keys)

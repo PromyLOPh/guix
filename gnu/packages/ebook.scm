@@ -203,10 +203,7 @@ with Microsoft Compiled HTML (CHM) files")
        ("qtwebengine" ,qtwebengine)
        ("sqlite" ,sqlite)))
     (arguments
-     `(;; Calibre is using setuptools by itself, but the setup.py is not
-       ;; compatible with the shim wrapper (taken from pip) we are using.
-       #:use-setuptools? #f
-       #:phases
+     `(#:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'patch-source
            (lambda _

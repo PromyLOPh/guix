@@ -640,14 +640,7 @@ symmetries written in C.  Spglib can be used to:
                                     "/include/freetype2:"
                                     (assoc-ref inputs "libxml2")
                                     "/include/libxml2:"
-                                    (getenv "CPLUS_INCLUDE_PATH")))))
-         ;; The setup.py script does not support one of the Python build
-         ;; system's default flags, "--single-version-externally-managed".
-         (replace 'install
-           (lambda* (#:key outputs #:allow-other-keys)
-             (invoke "python" "setup.py" "install"
-                     (string-append "--prefix=" (assoc-ref outputs "out"))
-                     "--root=/"))))))
+                                    (getenv "CPLUS_INCLUDE_PATH"))))))))
     (inputs
      `(("freetype" ,freetype)
        ("libpng" ,libpng)
@@ -660,8 +653,7 @@ symmetries written in C.  Spglib can be used to:
        ("glm" ,glm)
        ("netcdf" ,netcdf)))
     (native-inputs
-     `(("catch2" ,catch-framework2)
-       ("python-setuptools" ,python-setuptools)))
+     `(("catch2" ,catch-framework2)))
     (home-page "https://pymol.org")
     (synopsis "Molecular visualization system")
     (description "PyMOL is a capable molecular viewer and renderer.  It can be

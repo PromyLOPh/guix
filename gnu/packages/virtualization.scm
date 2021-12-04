@@ -1416,8 +1416,7 @@ virtualization library.")
                 "11kvpzcmyir91qz0dsnk7748jbb4wr8mrc744w117qc91pcy6vrb"))))
     (build-system python-build-system)
     (arguments
-     `(#:use-setuptools? #f          ; uses custom distutils 'install' command
-       #:tests? #f                      ; TODO The tests currently fail
+     `(#:tests? #f                      ; TODO The tests currently fail
                                         ; RuntimeError: Loop condition wasn't
                                         ; met
        #:imported-modules ((guix build glib-or-gtk-build-system)

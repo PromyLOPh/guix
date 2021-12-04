@@ -3579,7 +3579,8 @@ parsing code in hiredis.  It primarily speeds up parsing of multi bulk replies."
      ;; no tests
      `(#:tests? #f))
     (propagated-inputs
-      `(("python-sortedcontainers" ,python-sortedcontainers)))
+      `(("python-sortedcontainers" ,python-sortedcontainers)
+        ("python-redis" ,python-redis)))
     (home-page "https://github.com/jamesls/fakeredis")
     (synopsis "Fake implementation of redis API for testing purposes")
     (description

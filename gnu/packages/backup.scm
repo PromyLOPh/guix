@@ -124,8 +124,7 @@
        ("gnupg" ,gnupg)                 ; gpg executable needed
        ("util-linux" ,util-linux)))     ; for setsid
     (arguments
-     `(#:test-target "test"
-       #:phases
+     `(#:phases
        (modify-phases %standard-phases
          (add-before 'build 'use-store-file-names
            (lambda* (#:key inputs #:allow-other-keys)

@@ -1540,10 +1540,9 @@ I/O-free core, and integration modules for different event loops.")
     (arguments
      '(#:phases
        (modify-phases %standard-phases
-         (replace 'build
+         (add-before 'build 'use-system-cffi
            (lambda _
-             (setenv "ARGON2_CFFI_USE_SYSTEM" "1")
-             (invoke "python" "setup.py" "build")))
+             (setenv "ARGON2_CFFI_USE_SYSTEM" "1")))
          (replace 'check
            (lambda* (#:key inputs outputs #:allow-other-keys)
              (add-installed-pythonpath inputs outputs)

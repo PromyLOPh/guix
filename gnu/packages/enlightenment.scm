@@ -621,7 +621,6 @@ directories.
     (build-system python-build-system)
     (arguments
      `(#:tests? #f      ; no test target
-       #:use-setuptools? #f
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'find-theme-dir

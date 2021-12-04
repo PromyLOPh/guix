@@ -69,6 +69,8 @@
   #:use-module (gnu packages perl)
   #:use-module (gnu packages perl-check)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-build)
+  #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages tls)
   #:use-module (gnu packages web)
   #:use-module ((guix licenses) #:prefix license:)
@@ -321,9 +323,12 @@ formulas and hyperlinks to multiple worksheets in an Excel 2007+ XLSX file.")
                 ;; For 'libxml2/libxml/tree.h'.
                 (("ROOT = r'/usr'")
                  (format #f "ROOT = r'~a'" libxml2))
-                ;; For 'iconv.h'.
                 (("/opt/include")
-                 (string-append glibc "/include")))))))))
+                 (string-append glibc "/include"))
+                (("distutils\\.core") "setuptools")
+                ;; python-pypa-build does not like it if setup.py exits.
+                (("sys\\.exit\\(0\\)") "")))
+            #t)))))
     (inputs `(("libxml2" ,libxml2)))
     (synopsis "Python bindings for the libxml2 library")))
 
@@ -2540,10 +2545,16 @@ because lxml.etree already has its own implementation of XPath 1.0.")
               "self.assertEqual({}, el.nsmap)")))))
     (build-system python-build-system)
     (arguments
-     `(#:phases (modify-phases %standard-phases
-                  (replace 'check
+      `(#:phases (modify-phases %standard-phases
+                                ;; Expects setup.py to be called from source root.
+         (add-after 'unpack 'patch-get-base-dir
                     (lambda _
-                      (invoke "make" "test"))))))
+                      (substitute* "versioninfo.py"
+                                   (("os.path.abspath\\(os.path.dirname\\(sys.argv\\[0\\]\\)\\)") "'.'"))
+                      #t))
+         (replace 'check
+                  (lambda _
+                    (invoke "make" "test"))))))
     (inputs
      `(("libxml2" ,libxml2)
        ("libxslt" ,libxslt)))

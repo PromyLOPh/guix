@@ -3649,8 +3649,7 @@ event-based scripts for scrobbling, notifications, etc.")
               (patches (search-patches "picard-fix-id3-rename-test.patch"))))
     (build-system python-build-system)
     (arguments
-     '(#:use-setuptools? #f
-       #:configure-flags
+     '(#:configure-flags
        (list "--root=/"
              ;; Don't phone home or show ‘Check for Update…’ in the Help menu.
              "--disable-autoupdate")
