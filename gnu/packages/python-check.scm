@@ -1660,6 +1660,7 @@ annotations.")
         (base32
          "1j30g9jfmbfki383qxwrfds8b23yiwywj40lng4lqcf5yab4ahr7"))))
     (build-system python-build-system)
+    (arguments `(#:tests? #f)) ; No tests available on PyPi.
     (home-page "https://github.com/myint/eradicate")
     (synopsis "Remove commented-out code from Python sources")
     (description "The @command{eradicate} command removes commented-out code
