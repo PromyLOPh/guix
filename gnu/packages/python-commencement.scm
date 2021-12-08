@@ -35,11 +35,9 @@
   #:use-module (gnu packages)
   #:use-module (gnu packages python)
   #:use-module (gnu packages python-build)
-  ;#:use-module (gnu packages python-xyz)
+  #:use-module (gnu packages python-xyz)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-26))
-
-;; Python toolchain and all packages required to bootstrap it.
 
 (define-public python-toolchain
   (package
@@ -63,10 +61,8 @@
     (inputs
      `(("python" ,python-wrapper)
        ("python-setuptools" ,python-setuptools)
-       ;("python-pip" ,python-pip)
-       )) ; XXX Maybe virtualenv/venv too? It kind of
-                                    ; defeats the purpose of guix, but is used
-                                    ; alot in local development.
+       ("python-pip" ,python-pip)
+       ("python-virtualenv" ,python-virtualenv)))
     (native-search-paths
      (package-native-search-paths python))
     (search-paths
