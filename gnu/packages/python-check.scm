@@ -1589,15 +1589,19 @@ any Python VM with basically no runtime overhead.")
     (name "python-pylama")
     (version "7.7.1")
     (source
-     (origin
-       (method url-fetch)
-       (uri (pypi-uri "pylama" version))
+      (origin
+       ;; The PyPi tarball lacks dummy.py for tests.
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/klen/pylama.git")
+             (commit version)))
+       (file-name (git-file-name name version))
        (sha256
-        (base32
-         "13vx7daqz2918y9s8q3v2i3xaq3ah43a9p58srqi6hqskkpm7blv"))))
+        (base32 "1hza43s8b3znq2vcihyvsyw6j19lm42rjn87i056j8kgrmkfil8w"))))
     (build-system python-build-system)
     (arguments
-     `(#:phases (modify-phases %standard-phases
+     `(#:test-flags '("tests" "-k" "not test_eradicate")
+       #:phases (modify-phases %standard-phases
                   (add-after 'unpack 'disable-failing-tests
                     (lambda _
                       ;; Fails with: "ImportError: cannot import name
