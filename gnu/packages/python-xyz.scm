@@ -14818,7 +14818,7 @@ simulation, statistical modeling, machine learning and much more.")
         (base32
          "1r9ixxnish9j3dq4h0z0cwlkr4f5lgi6d8mhbzw59hbbjlmp2qhd"))))
     (native-inputs
-     (list python-pytest))
+     (list python-pytest python-setuptools python-wheel))
     (build-system pyproject-build-system)
     (arguments
      (list #:test-flags
@@ -24232,7 +24232,7 @@ object-oriented library such as @code{scikit-learn}.")
                (with-directory-excursion "/tmp"
                  (invoke "nosetests" "-v"))))))))
     (native-inputs
-     (list python-nose))
+     (list python-nose python-setuptools python-wheel))
     (home-page "https://pypi.org/project/dill/")
     (synopsis "Serialize all of Python")
     (description "Dill extends Python's @code{pickle} module for serializing

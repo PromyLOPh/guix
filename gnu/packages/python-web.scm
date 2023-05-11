@@ -300,7 +300,8 @@ by calling @code{FrozenList.freeze}.")
     (build-system pyproject-build-system)
     (arguments (list #:test-flags #~(list "tests")))
     (propagated-inputs (list python-frozenlist))
-    (native-inputs (list python-pytest python-pytest-asyncio python-pytest-cov))
+    (native-inputs (list python-pytest python-pytest-asyncio python-pytest-cov
+                         python-setuptools python-wheel))
     (home-page "https://github.com/aio-libs/aiosignal")
     (synopsis "Callback manager for Python @code{asyncio} projects")
     (description "This Python module provides @code{Signal}, an abstraction to

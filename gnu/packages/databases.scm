@@ -4103,6 +4103,8 @@ reasonable substitute.")
      (list python-pytest
            python-pytest-asyncio
            python-pytest-timeout
+           python-setuptools
+           python-wheel
            redis))
     (propagated-inputs
      (list python-async-timeout))

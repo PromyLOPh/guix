@@ -52,7 +52,7 @@
   "Return the default Python package."
   ;; Lazily resolve the binding to avoid a circular dependency.
   (let ((python (resolve-interface '(gnu packages python))))
-    (module-ref python 'python-toolchain)))
+    (module-ref python 'python-sans-pip-wrapper)))
 
 (define sanity-check.py
   (search-auxiliary-file "python/sanity-check.py"))

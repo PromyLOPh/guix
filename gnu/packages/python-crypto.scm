@@ -528,7 +528,9 @@ is used by the Requests library to verify HTTPS requests.")
            python-pretend
            python-pytest                ;for subtests
            python-pytest-benchmark
-           python-pytest-subtests))
+           python-pytest-subtests
+           python-setuptools
+           python-wheel))
     (inputs (list python-cryptography-rust))
     (propagated-inputs (list python-cffi))
     (home-page "https://github.com/pyca/cryptography")
@@ -1190,7 +1192,8 @@ derivation function.")
                (base32
                 "0d4x84crbz0a17d8gi90z6zlxwm9pslc65rx0cdw2797ra360v3f"))))
     (build-system pyproject-build-system)
-    (native-inputs (list python-idna python-pytest))
+    (native-inputs (list python-idna python-pytest python-setuptools
+                         python-wheel))
     (propagated-inputs (list python-attrs python-cryptography python-pyasn1
                              python-pyasn1-modules python-six))
     (home-page "https://service-identity.readthedocs.io/")
