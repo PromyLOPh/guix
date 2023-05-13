@@ -141,6 +141,7 @@
   #:use-module (guix git-download)
   #:use-module (guix gexp)
   #:use-module ((guix licenses) #:prefix license:)
+  #:use-module (guix modules)
   #:use-module (guix packages)
   #:use-module (guix utils)
   #:use-module (srfi srfi-1)
@@ -1697,6 +1698,12 @@ domains, their live performance and resource utilization statistics.")
              (string-append "XMLTO="
                             (search-input-file %build-inputs
                                                "/bin/xmlto")))
+      #:modules ((guix build gnu-build-system)
+                  (guix build utils)
+                  ((guix build python-build-system)
+                   #:select (ensure-no-mtimes-pre-1980)))
+      #:imported-modules ,(append %gnu-build-system-modules
+                                 %python-build-system-modules)
        #:phases
        (modify-phases %standard-phases
          (delete 'configure)            ; no configure script
@@ -1719,6 +1726,8 @@ domains, their live performance and resource utilization statistics.")
              (substitute* "criu/include/plugin.h"
                (("/var") (string-append (assoc-ref outputs "out"))))
              ))
+         (add-after 'unpack 'ensure-no-mtimes-pre-1980
+                    ensure-no-mtimes-pre-1980)
          (add-before 'build 'fix-symlink
            (lambda* (#:key inputs #:allow-other-keys)
              ;; The file 'images/google/protobuf/descriptor.proto' points to
